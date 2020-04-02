@@ -7,3 +7,4 @@
  or else it is not detectable when the part is removed/installed.
  
 # Getting Started
+Please look under the Github Wiki to see how to implement it
