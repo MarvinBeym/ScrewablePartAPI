@@ -22,6 +22,7 @@ namespace ScrewablePartAPI
         private Collider parentGameObjectCollider;
         private GameObject boltModelToUse;
         private Screws screws;
+        private AudioSource screw_sound;
         public bool partFixed = false;
 
         private Vector3[] screwsDefaultPositionLocal;
@@ -31,7 +32,7 @@ namespace ScrewablePartAPI
         private GameObject hitBolt = null;
         private bool aimingAtBolt = false;
         private RaycastHit hit;
-        private Material bolt_material;
+        private Material screw_material;
         private AssetBundle assets;
 
         private GameObject selectedItem;
@@ -40,7 +41,7 @@ namespace ScrewablePartAPI
 
         private bool toolInHand = false;
 
-
+        [Obsolete("Do not use this anymore, switch to the constructor where it asks you to supply a boltType to use instead of AssetBundle")]
         /// <summary>
         /// Generates the Screws for a part and makes them detectable using the DetectBolting method
         /// <para>Dont ever change the name of the BOLT GameObject that gets created, which is always parentGameObject.name + "_BOLT + boltNumber</para>
@@ -56,6 +57,113 @@ namespace ScrewablePartAPI
         public ScrewablePart(SortedList<String, Screws> screwsListSave, GameObject parentGameObject, Vector3[] screwsPositionsLocal, Vector3[] screwsRotationLocal, int screwsSizeForAll, AssetBundle assets)
         {
             this.assets = assets;
+            this.selectedItem = GameObject.Find("PLAYER/Pivot/AnimPivot/Camera/FPSCamera/SelectItem");
+            this.selectedItemFSM = selectedItem.GetComponent<PlayMakerFSM>();
+            FsmHook.FsmInject(selectedItem, "Hand", new Action(ChangedToHand));
+            FsmHook.FsmInject(selectedItem, "Tools", new Action(ChangedToTools));
+
+            this._wrenchSize = selectedItemFSM.Fsm.GetFsmFloat("OldWrench");
+            this.screw_material = assets.LoadAsset<Material>("bolt-texture.mat");
+            this.boltModelToUse = (assets.LoadAsset("bolt_nut.prefab") as GameObject);
+            this.parentGameObject = parentGameObject;
+
+            this.screwsDefaultPositionLocal = screwsPositionsLocal;
+            this.screwsDefaultRotationLocal = screwsRotationLocal;
+            
+
+            if (screwsListSave != null)
+            {
+                Screws loadedScrews;
+                bool successWhenLoading = screwsListSave.TryGetValue(parentGameObject.name, out loadedScrews);
+                if (successWhenLoading)
+                {
+                    //Save provided and found in file
+                    this.screws = loadedScrews;
+                }
+                else
+                {
+                    this.screws = new Screws();
+                }
+            }
+
+            if (this.screws == null)
+            {
+                //No Save provided
+                this.screws = new Screws();
+
+
+                //Initialize boltSize
+                int[] boltSize = new int[screwsPositionsLocal.Length];
+                for (int i = 0; i < boltSize.Length; i++)
+                {
+                    boltSize[i] = screwsSizeForAll;
+                }
+
+                for (int i = 0; i < boltSize.Length; i++)
+                {
+                    if (boltSize[i] < 5)
+                    {
+                        boltSize[i] = 5;
+                    }
+                    else if (boltSize[i] > 15)
+                    {
+                        boltSize[i] = 15;
+                    }
+                }
+
+                //Initialize boltTightness
+                int[] boltTightness = new int[screwsPositionsLocal.Length];
+                for (int i = 0; i < boltTightness.Length; i++)
+                {
+                    boltTightness[i] = 0;
+                }
+
+                this.screws.partName = parentGameObject.name;
+                this.screws.screwsPositionsLocal = screwsPositionsLocal;
+                this.screws.screwsRotationLocal = screwsRotationLocal;
+                this.screws.screwsSize = boltSize;
+                this.screws.screwsTightness = boltTightness;
+
+            }
+            MakePartScrewable(this.screws);
+        }
+
+        /// <summary>
+        /// Generates the Screws for a part and makes them detectable using the DetectBolting method
+        /// <para>Dont ever change the name of the BOLT GameObject that gets created, which is always parentGameObject.name + "_BOLT + boltNumber</para>
+        /// <para>example: Racing Turbocharger_BOLT1</para>
+        /// <para>the constructor will auto find the correct gameObject to create the screws on (if names did not change)</para>
+        /// </summary>
+        /// <param name="screwsListSave">SortedList of saved information for ALL Parts!</param>
+        /// <param name="mod">Your mod, usually "this" - needed to load scriptapi assets based on your mods asset folder path</param>
+        /// <param name="parentGameObject">The "parentGameObject" GameObject on which bolts should be placed. This should always be the ModAPI part.rigidPart when using modapi!!!</param>
+        /// <param name="screwsPositionsLocal">The position where each screw should be placed on the parentGameObject GameObject</param>
+        /// <param name="screwsRotationLocal">The rotation the screws should have when placed on parentGameObject GameObject</param>
+        /// <param name="screwsSizeForAll">The size for all screws to be used as a single value if it is set to 8 you need to use the wrench size 8 to install the parts</param>
+        /// <param name="screwType">The screw type to use, choose "screwable_nut", "screwable_screw1", "screwable_screw2" or "screwable_screw3" if not written correctly will load "screwable_nut"</param>
+        public ScrewablePart(SortedList<String, Screws> screwsListSave, Mod mod, GameObject parentGameObject, Vector3[] screwsPositionsLocal, Vector3[] screwsRotationLocal, int screwsSizeForAll, string screwType)
+        {
+            AssetBundle assets = LoadAssets.LoadBundle(mod, "screwableapi.unity3d");
+
+            switch (screwType)
+            {
+                case "screwable_nut":
+                    this.boltModelToUse = (assets.LoadAsset("screwable_nut.prefab") as GameObject);
+                    break;
+                case "screwable_screw1":
+                    this.boltModelToUse = (assets.LoadAsset("screwable_screw1.prefab") as GameObject);
+                    break;
+                case "screwable_screw2":
+                    this.boltModelToUse = (assets.LoadAsset("screwable_screw2.prefab") as GameObject);
+                    break;
+                case "screwable_screw3":
+                    this.boltModelToUse = (assets.LoadAsset("screwable_screw3.prefab") as GameObject);
+                    break;
+                default:
+                    this.boltModelToUse = (assets.LoadAsset("screwable_nut.prefab") as GameObject);
+                    break;
+            }
+            this.screw_material = assets.LoadAsset<Material>("Screw-Material.mat");
 
             this.selectedItem = GameObject.Find("PLAYER/Pivot/AnimPivot/Camera/FPSCamera/SelectItem");
             this.selectedItemFSM = selectedItem.GetComponent<PlayMakerFSM>();
@@ -63,8 +171,8 @@ namespace ScrewablePartAPI
             FsmHook.FsmInject(selectedItem, "Tools", new Action(ChangedToTools));
 
             this._wrenchSize = selectedItemFSM.Fsm.GetFsmFloat("OldWrench");
-            this.bolt_material = assets.LoadAsset<Material>("bolt-texture.mat");
-            this.boltModelToUse = (assets.LoadAsset("bolt_nut.prefab") as GameObject);
+            
+            
             this.parentGameObject = parentGameObject;
 
             this.screwsDefaultPositionLocal = screwsPositionsLocal;
@@ -125,6 +233,7 @@ namespace ScrewablePartAPI
                 this.screws.screwsTightness = boltTightness;
 
             }
+            assets.Unload(false);
             MakePartScrewable(this.screws);
         }
 
@@ -200,8 +309,8 @@ namespace ScrewablePartAPI
                                 {
                                     if (screws.screwsTightness[index] >= 0 && screws.screwsTightness[index] <= 7)
                                     {
-                                        hitBolt.transform.Rotate(0, 45, 0);
-                                        hitBolt.transform.Translate(0f, -0.0008f, 0f); //Has to be adjustable
+                                        hitBolt.transform.Rotate(0, 0, 45);
+                                        hitBolt.transform.Translate(0f, 0f, -0.0008f); //Has to be adjustable
 
                                         screws.screwsPositionsLocal[index] = hitBolt.transform.localPosition;
                                         screws.screwsRotationLocal[index] = hitBolt.transform.localRotation.eulerAngles;
@@ -212,8 +321,8 @@ namespace ScrewablePartAPI
                                 {
                                     if (screws.screwsTightness[index] > 0 && screws.screwsTightness[index] <= 8)
                                     {
-                                        hitBolt.transform.Rotate(0, -45, 0);
-                                        hitBolt.transform.Translate(0f, 0.0008f, 0f); //Has to be adjustable
+                                        hitBolt.transform.Rotate(0, 0, -45);
+                                        hitBolt.transform.Translate(0f, 0f, 0.0008f); //Has to be adjustable
 
                                         screws.screwsPositionsLocal[index] = hitBolt.transform.localPosition;
                                         screws.screwsRotationLocal[index] = hitBolt.transform.localRotation.eulerAngles;
@@ -239,10 +348,10 @@ namespace ScrewablePartAPI
                 {
                     aimingAtBolt = false;
                 }
-                if (hitBolt != null && hitBolt.name.Contains("BOLT") && aimingAtBolt == false && bolt_material != null)
+                if (hitBolt != null && hitBolt.name.Contains("BOLT") && aimingAtBolt == false && screw_material != null)
                 {
                     MeshRenderer renderer = hitBolt.GetComponentInChildren<MeshRenderer>();
-                    renderer.material = bolt_material;
+                    renderer.material = screw_material;
                     hitBolt = null;
                 }
             }
