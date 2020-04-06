@@ -22,7 +22,7 @@ namespace ScrewablePartAPI
         private Collider parentGameObjectCollider;
         private GameObject boltModelToUse;
         private Screws screws;
-        private AudioSource screw_sound;
+        private AudioClip screw_soundClip;
         public bool partFixed = false;
 
         private Vector3[] screwsDefaultPositionLocal;
@@ -146,14 +146,13 @@ namespace ScrewablePartAPI
             this.assets = LoadAssets.LoadBundle(mod, "screwableapi.unity3d");
 
             this.boltModelToUse = loadBoltModelToUse(screwType);
-
             this.screw_material = assets.LoadAsset<Material>("Screw-Material.mat");
+            this.screw_soundClip = (assets.LoadAsset("screwable_sound.wav") as AudioClip);
 
             this.selectedItem = GameObject.Find("PLAYER/Pivot/AnimPivot/Camera/FPSCamera/SelectItem");
             this.selectedItemFSM = selectedItem.GetComponent<PlayMakerFSM>();
             FsmHook.FsmInject(selectedItem, "Hand", new Action(ChangedToHand));
             FsmHook.FsmInject(selectedItem, "Tools", new Action(ChangedToTools));
-
             this._wrenchSize = selectedItemFSM.Fsm.GetFsmFloat("OldWrench");
             
             
@@ -321,6 +320,7 @@ namespace ScrewablePartAPI
                                 {
                                     if (screws.screwsTightness[index] >= 0 && screws.screwsTightness[index] <= 7)
                                     {
+                                        AudioSource.PlayClipAtPoint(this.screw_soundClip, hitBolt.transform.position);
                                         hitBolt.transform.Rotate(0, 0, 45);
                                         hitBolt.transform.Translate(0f, 0f, -0.0008f); //Has to be adjustable
 
@@ -333,6 +333,7 @@ namespace ScrewablePartAPI
                                 {
                                     if (screws.screwsTightness[index] > 0 && screws.screwsTightness[index] <= 8)
                                     {
+                                        AudioSource.PlayClipAtPoint(this.screw_soundClip, hitBolt.transform.position);
                                         hitBolt.transform.Rotate(0, 0, -45);
                                         hitBolt.transform.Translate(0f, 0f, 0.0008f); //Has to be adjustable
 
