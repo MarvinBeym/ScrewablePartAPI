@@ -24,6 +24,7 @@ namespace ScrewablePartAPI
         private Screws screws;
         private AudioClip screw_soundClip;
         public bool partFixed = false;
+        private float screwingTimer;
 
         private Vector3[] screwsDefaultPositionLocal;
         private Vector3[] screwsDefaultRotationLocal;
@@ -216,6 +217,7 @@ namespace ScrewablePartAPI
 
                         if (hitScrew != null && hitScrew.name.Contains("SCREW") && hitScrew.name.Contains(parentGameObject.name))
                         {
+                            
                             string screwName = hitScrew.name.Substring(hitScrew.name.LastIndexOf("_SCREW"));
                             int index = Convert.ToInt32(screwName.Replace("_SCREW", "")) -1;
 
@@ -223,14 +225,15 @@ namespace ScrewablePartAPI
                             int screwSize = this.screws.screwsSize[index];
                             if (wrenchSize == screwSize)
                             {
-                                
+                                screwingTimer += Time.deltaTime;
                                 aimingAtScrew = true;
                                 MeshRenderer renderer = hitScrew.GetComponentInChildren<MeshRenderer>();
                                 renderer.material.shader = Shader.Find("GUI/Text Shader");
                                 renderer.material.SetColor("_Color", Color.green);
                                 
-                                if (Input.GetAxis("Mouse ScrollWheel") > 0f) // forward
+                                if (Input.GetAxis("Mouse ScrollWheel") > 0f && screwingTimer >= 0.2f) // forward
                                 {
+                                    screwingTimer = 0;
                                     if (screws.screwsTightness[index] >= 0 && screws.screwsTightness[index] <= 7)
                                     {
                                         AudioSource.PlayClipAtPoint(this.screw_soundClip, hitScrew.transform.position);
@@ -242,8 +245,9 @@ namespace ScrewablePartAPI
                                         screws.screwsTightness[index]++;
                                     }
                                 }
-                                else if (Input.GetAxis("Mouse ScrollWheel") < 0f) // backwards
+                                else if (Input.GetAxis("Mouse ScrollWheel") < 0f && screwingTimer >= 0.2f) // backwards
                                 {
+                                    screwingTimer = 0;
                                     if (screws.screwsTightness[index] > 0 && screws.screwsTightness[index] <= 8)
                                     {
                                         AudioSource.PlayClipAtPoint(this.screw_soundClip, hitScrew.transform.position);
