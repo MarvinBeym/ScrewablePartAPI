@@ -25,7 +25,6 @@ namespace ScrewablePartAPI
         private AudioClip screw_soundClip;
         public bool partFixed = false;
         private float screwingTimer;
-
         private Vector3[] screwsDefaultPositionLocal;
         private Vector3[] screwsDefaultRotationLocal;
 
@@ -39,6 +38,7 @@ namespace ScrewablePartAPI
         private GameObject selectedItem;
         private PlayMakerFSM selectedItemFSM;
         private FsmFloat _wrenchSize;
+        private FsmFloat _boltingSpeed;
 
         private bool toolInHand = false;
 
@@ -65,11 +65,15 @@ namespace ScrewablePartAPI
 
             this.selectedItem = GameObject.Find("PLAYER/Pivot/AnimPivot/Camera/FPSCamera/SelectItem");
             this.selectedItemFSM = selectedItem.GetComponent<PlayMakerFSM>();
+
             FsmHook.FsmInject(selectedItem, "Hand", new Action(ChangedToHand));
             FsmHook.FsmInject(selectedItem, "Tools", new Action(ChangedToTools));
-            this._wrenchSize = selectedItemFSM.Fsm.GetFsmFloat("OldWrench");
-            
-            
+
+            this._boltingSpeed = PlayMakerGlobals.Instance.Variables.GetFsmFloat("BoltingSpeed");
+            this._wrenchSize = PlayMakerGlobals.Instance.Variables.GetFsmFloat("ToolWrenchSize");
+            //this._wrenchSize = selectedItemFSM.Fsm.GetFsmFloat("OldWrench");
+
+
             this.parentGameObject = parentGameObject;
 
             this.screwsDefaultPositionLocal = screwsPositionsLocal.Clone() as Vector3[];
@@ -221,7 +225,7 @@ namespace ScrewablePartAPI
                             string screwName = hitScrew.name.Substring(hitScrew.name.LastIndexOf("_SCREW"));
                             int index = Convert.ToInt32(screwName.Replace("_SCREW", "")) -1;
 
-                            int wrenchSize = Convert.ToInt32(Convert.ToSingle(this._wrenchSize.ToString()) * 10f);
+                            int wrenchSize = Mathf.RoundToInt(this._wrenchSize.Value * 10f);
                             int screwSize = this.screws.screwsSize[index];
                             if (wrenchSize == screwSize)
                             {
@@ -231,7 +235,7 @@ namespace ScrewablePartAPI
                                 renderer.material.shader = Shader.Find("GUI/Text Shader");
                                 renderer.material.SetColor("_Color", Color.green);
                                 
-                                if (Input.GetAxis("Mouse ScrollWheel") > 0f && screwingTimer >= 0.2f) // forward
+                                if (Input.GetAxis("Mouse ScrollWheel") > 0f && screwingTimer >= _boltingSpeed.Value) // forward
                                 {
                                     screwingTimer = 0;
                                     if (screws.screwsTightness[index] >= 0 && screws.screwsTightness[index] <= 7)
@@ -245,7 +249,7 @@ namespace ScrewablePartAPI
                                         screws.screwsTightness[index]++;
                                     }
                                 }
-                                else if (Input.GetAxis("Mouse ScrollWheel") < 0f && screwingTimer >= 0.2f) // backwards
+                                else if (Input.GetAxis("Mouse ScrollWheel") < 0f && screwingTimer >= _boltingSpeed.Value) // backwards
                                 {
                                     screwingTimer = 0;
                                     if (screws.screwsTightness[index] > 0 && screws.screwsTightness[index] <= 8)
