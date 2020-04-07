@@ -137,6 +137,89 @@ namespace ScrewablePartAPI
             MakePartScrewable(this.screws);
         }
 
+        public ScrewablePart(SortedList<String, Screws> screwsListSave, Mod mod, GameObject parentGameObject, Vector3[] screwsPositionsLocal, Vector3[] screwsRotationLocal, Vector3[] screwsScale, int screwsSizeForAll, string screwType)
+        {
+            this.assets = LoadAssets.LoadBundle(mod, "screwableapi.unity3d");
+
+            this.screwModelToUse = loadscrewModelToUse(screwType);
+            this.screw_material = assets.LoadAsset<Material>("Screw-Material.mat");
+            this.screw_soundClip = (assets.LoadAsset("screwable_sound.wav") as AudioClip);
+
+            this.selectedItem = GameObject.Find("PLAYER/Pivot/AnimPivot/Camera/FPSCamera/SelectItem");
+            this.selectedItemFSM = selectedItem.GetComponent<PlayMakerFSM>();
+
+            FsmHook.FsmInject(selectedItem, "Hand", new Action(ChangedToHand));
+            FsmHook.FsmInject(selectedItem, "Tools", new Action(ChangedToTools));
+
+            this._boltingSpeed = PlayMakerGlobals.Instance.Variables.GetFsmFloat("BoltingSpeed");
+            this._wrenchSize = PlayMakerGlobals.Instance.Variables.GetFsmFloat("ToolWrenchSize");
+            //this._wrenchSize = selectedItemFSM.Fsm.GetFsmFloat("OldWrench");
+
+
+            this.parentGameObject = parentGameObject;
+
+            this.screwsDefaultPositionLocal = screwsPositionsLocal.Clone() as Vector3[];
+            this.screwsDefaultRotationLocal = screwsRotationLocal.Clone() as Vector3[];
+
+            if (screwsListSave != null)
+            {
+                Screws loadedScrews;
+                bool successWhenLoading = screwsListSave.TryGetValue(parentGameObject.name, out loadedScrews);
+                if (successWhenLoading)
+                {
+                    //Save provided and found in file
+                    this.screws = loadedScrews;
+                }
+                else
+                {
+                    this.screws = new Screws();
+                }
+            }
+
+            if (this.screws == null)
+            {
+                //No Save provided
+                this.screws = new Screws();
+
+
+                //Initialize screwSize
+                int[] screwSize = new int[screwsPositionsLocal.Length];
+                for (int i = 0; i < screwSize.Length; i++)
+                {
+                    screwSize[i] = screwsSizeForAll;
+                }
+
+                for (int i = 0; i < screwSize.Length; i++)
+                {
+                    if (screwSize[i] < 5)
+                    {
+                        screwSize[i] = 5;
+                    }
+                    else if (screwSize[i] > 15)
+                    {
+                        screwSize[i] = 15;
+                    }
+                }
+
+                //Initialize screwTightness
+                int[] screwTightness = new int[screwsPositionsLocal.Length];
+                for (int i = 0; i < screwTightness.Length; i++)
+                {
+                    screwTightness[i] = 0;
+                }
+
+                this.screws.partName = parentGameObject.name;
+                this.screws.screwsPositionsLocal = screwsPositionsLocal;
+                this.screws.screwsRotationLocal = screwsRotationLocal;
+                this.screws.screwsSize = screwSize;
+                this.screws.screwsTightness = screwTightness;
+
+            }
+            assets.Unload(false);
+            MakePartScrewable(this.screws, screwsScale);
+        }
+
+
         private GameObject loadscrewModelToUse(string screwType)
         {
             GameObject screwModel;
@@ -192,6 +275,29 @@ namespace ScrewablePartAPI
                 screw.transform.SetParent(parentGameObject.transform);
                 screw.transform.localPosition = screws.screwsPositionsLocal[i];
                 screw.transform.localScale = new Vector3(0.7f, 0.7f, 0.7f);
+                screw.transform.localRotation = new Quaternion { eulerAngles = screws.screwsRotationLocal[i] };
+                screw.layer = LayerMask.NameToLayer("DontCollide");
+            }
+
+            this.parentGameObjectCollider = this.parentGameObject.GetComponent<Collider>();
+            if (screws.screwsTightness.All(element => element == 8))
+            {
+                //All Screws tight. Make part fixed
+                this.parentGameObjectCollider.enabled = false;
+                partFixed = true;
+            }
+        }
+
+
+        private void MakePartScrewable(Screws screws, Vector3[] screwsScale)
+        {
+            for (int i = 0; i < screws.screwsPositionsLocal.Length; i++)
+            {
+                GameObject screw = GameObject.Instantiate(screwModelToUse);
+                screw.name = (parentGameObject.name + "_SCREW" + (i + 1));
+                screw.transform.SetParent(parentGameObject.transform);
+                screw.transform.localPosition = screws.screwsPositionsLocal[i];
+                screw.transform.localScale = screwsScale[i];
                 screw.transform.localRotation = new Quaternion { eulerAngles = screws.screwsRotationLocal[i] };
                 screw.layer = LayerMask.NameToLayer("DontCollide");
             }
