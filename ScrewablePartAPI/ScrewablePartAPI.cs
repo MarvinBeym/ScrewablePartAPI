@@ -221,7 +221,6 @@ namespace ScrewablePartAPI
 
                         if (hitScrew != null && hitScrew.name.Contains("SCREW") && hitScrew.name.Contains(parentGameObject.name))
                         {
-                            
                             string screwName = hitScrew.name.Substring(hitScrew.name.LastIndexOf("_SCREW"));
                             int index = Convert.ToInt32(screwName.Replace("_SCREW", "")) -1;
 
@@ -290,6 +289,7 @@ namespace ScrewablePartAPI
                 }
             }
         }
+
 
         /// <summary>
         /// <para>Call this in ModApi.Attachable part function "disassemble(bool startUp = false) on the static made screwable part AFTER base.disassemble(startUp);</para>
