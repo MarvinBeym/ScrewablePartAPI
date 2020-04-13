@@ -430,6 +430,7 @@ namespace ScrewablePartAPI
         /// </summary>
         public void setScrewsOnAssemble()
         {
+            resetScrewsOnDisassemble();
             for (int i = 0; i < this.screws.screwsPositionsLocal.Length; i++)
             {
                 GameObject tmpScrew = GameObject.Find(parentGameObject.name + "_SCREW" + (i + 1));
@@ -437,6 +438,7 @@ namespace ScrewablePartAPI
 
                 tmpScrew.transform.localRotation = Quaternion.Euler(this.screws.screwsRotationLocal[i]);
             }
+            this.parentGameObjectCollider.enabled = true;
         }
 
         /// <summary>
