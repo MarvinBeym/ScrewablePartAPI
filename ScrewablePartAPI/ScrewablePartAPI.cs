@@ -319,16 +319,17 @@ namespace ScrewablePartAPI
         {
             if (Camera.main != null)
             {
-                if (Physics.Raycast(Camera.main.ScreenPointToRay(Input.mousePosition), out hit, 1f, 1 << LayerMask.NameToLayer("DontCollide")) != false)
+                if (toolInHand == true)
                 {
-                    if (toolInHand == true)
+                    if (Physics.Raycast(Camera.main.ScreenPointToRay(Input.mousePosition), out hit, 1f, 1 << LayerMask.NameToLayer("DontCollide")) != false)
                     {
+
                         hitScrew = hit.collider?.gameObject;
 
                         if (hitScrew != null && hitScrew.name.Contains("SCREW") && hitScrew.name.Contains(parentGameObject.name))
                         {
                             string screwName = hitScrew.name.Substring(hitScrew.name.LastIndexOf("_SCREW"));
-                            int index = Convert.ToInt32(screwName.Replace("_SCREW", "")) -1;
+                            int index = Convert.ToInt32(screwName.Replace("_SCREW", "")) - 1;
 
                             int wrenchSize = Mathf.RoundToInt(this._wrenchSize.Value * 10f);
                             int screwSize = this.screws.screwsSize[index];
@@ -339,7 +340,7 @@ namespace ScrewablePartAPI
                                 MeshRenderer renderer = hitScrew.GetComponentInChildren<MeshRenderer>();
                                 renderer.material.shader = Shader.Find("GUI/Text Shader");
                                 renderer.material.SetColor("_Color", Color.green);
-                                
+
                                 if (Input.GetAxis("Mouse ScrollWheel") > 0f && screwingTimer >= _boltingSpeed.Value) // forward
                                 {
                                     screwingTimer = 0;
@@ -382,10 +383,10 @@ namespace ScrewablePartAPI
                             }
                         }
                     }
-                }
-                else
-                {
-                    aimingAtScrew = false;
+                    else
+                    {
+                        aimingAtScrew = false;
+                    }
                 }
                 if (hitScrew != null && hitScrew.name.Contains("SCREW") && hitScrew.name.Contains(parentGameObject.name) && aimingAtScrew == false && screw_material != null)
                 {
@@ -395,7 +396,7 @@ namespace ScrewablePartAPI
                 }
             }
         }
-
+        
 
         /// <summary>
         /// <para>Call this in ModApi.Attachable part function "disassemble(bool startUp = false) on the static made screwable part AFTER base.disassemble(startUp);</para>
