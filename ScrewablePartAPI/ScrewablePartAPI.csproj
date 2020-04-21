@@ -21,6 +21,7 @@
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
+    <DocumentationFile>bin\Debug\ScrewablePartAPI.xml</DocumentationFile>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>none</DebugType>
@@ -29,6 +30,7 @@
     <DefineConstants>TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
+    <DocumentationFile>bin\Release\ScrewablePartAPI.xml</DocumentationFile>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="MSCLoader">
@@ -65,10 +67,12 @@
     <PostBuildEvent>if "$(ConfigurationName)" == "Debug" (
 copy "$(TargetPath)" "S:\Spiele\Steam\steamapps\common\My Summer Car\Mods\References" /y
 copy "$(TargetDir)$(TargetName).pdb" "S:\Spiele\Steam\steamapps\common\My Summer Car\Mods\References" /y
+copy "$(TargetDir)$(TargetName).xml" "S:\Spiele\Steam\steamapps\common\My Summer Car\Mods\References" /y
 cd "S:\Spiele\Steam\steamapps\common\My Summer Car\Mods\References"
 call "S:\Spiele\Steam\steamapps\common\My Summer Car\Mods\References\debug.bat"
 ) ELSE (
 copy "$(TargetPath)" "S:\Spiele\Steam\steamapps\common\My Summer Car\Mods\References" /y
+copy "$(TargetDir)$(TargetName).xml" "S:\Spiele\Steam\steamapps\common\My Summer Car\Mods\References" /y
 )</PostBuildEvent>
   </PropertyGroup>
 </Project>

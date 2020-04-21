@@ -10,20 +10,27 @@ using UnityEngine;
 
 namespace ScrewablePartAPI
 {
-
-
     /// <summary>
     /// The main ScrewablePart class
     /// Handles everything about Detecting screwing, save, load and creating the child GameObjects.
     /// </summary>
     public class ScrewablePart
     {
+        /// <summary>
+        /// will return if the screwable part is fixed (all screwes tight).
+        /// </summary>
+        public bool partFixed = false;
+        /// <summary>
+        /// will return the version of this API in case you need it for something.
+        /// </summary>
+        public static string apiVersion = "1.1.1";
+
         private GameObject parentGameObject;
         private Collider parentGameObjectCollider;
         private GameObject screwModelToUse;
         private Screws screws;
         private AudioClip screw_soundClip;
-        public bool partFixed = false;
+        
         private float screwingTimer;
         private Vector3[] screwsDefaultPositionLocal;
         private Vector3[] screwsDefaultRotationLocal;
@@ -35,12 +42,16 @@ namespace ScrewablePartAPI
         private Material screw_material;
         private AssetBundle assets;
 
+
         private GameObject selectedItem;
         private PlayMakerFSM selectedItemFSM;
         private FsmFloat _wrenchSize;
         private FsmFloat _boltingSpeed;
+        private GameObject spannerRatchetGameObject;
 
         private bool toolInHand = false;
+        private bool ratchetInHand = false;
+        private bool ratchetSwitch = false;
 
         /// <summary>
         /// Generates the Screws for a part and makes them detectable using the DetectScrewing method
@@ -137,10 +148,24 @@ namespace ScrewablePartAPI
             MakePartScrewable(this.screws);
         }
 
+        /// <summary>
+        /// Generates the Screws for a part and makes them detectable using the DetectScrewing method
+        /// <para>Dont ever change the name of the SCREW GameObject that gets created, which is always parentGameObject.name + "_SCREW + screwNumber</para>
+        /// <para>example: Racing Turbocharger_SCREW1</para>
+        /// <para>the constructor will auto find the correct gameObject to create the screws on (if names did not change)</para>
+        /// </summary>
+        /// <param name="screwsListSave">SortedList of saved information for ALL Parts!</param>
+        /// <param name="mod">Your mod, usually "this" - needed to load scriptapi assets based on your mods asset folder path</param>
+        /// <param name="parentGameObject">The "parentGameObject" GameObject on which screws should be placed. This should always be the ModAPI part.rigidPart when using modapi!!!</param>
+        /// <param name="screwsPositionsLocal">The position where each screw should be placed on the parentGameObject GameObject</param>
+        /// <param name="screwsRotationLocal">The rotation the screws should have when placed on parentGameObject GameObject</param>
+        /// <param name="screwsScale">The scale the screw object should have (1 = defaults game scale)</param>
+        /// <param name="screwsSizeForAll">The size for all screws to be used as a single value if it is set to 8 you need to use the wrench size 8 to install the parts</param>
+        /// <param name="screwType">The screw type to use, choose "screwable_nut", "screwable_screw1", "screwable_screw2" or "screwable_screw3" if not written correctly will load "screwable_nut"</param>
         public ScrewablePart(SortedList<String, Screws> screwsListSave, Mod mod, GameObject parentGameObject, Vector3[] screwsPositionsLocal, Vector3[] screwsRotationLocal, Vector3[] screwsScale, int screwsSizeForAll, string screwType)
         {
             this.assets = LoadAssets.LoadBundle(mod, "screwableapi.unity3d");
-
+            
             this.screwModelToUse = loadscrewModelToUse(screwType);
             this.screw_material = assets.LoadAsset<Material>("Screw-Material.mat");
             this.screw_soundClip = (assets.LoadAsset("screwable_sound.wav") as AudioClip);
@@ -213,6 +238,8 @@ namespace ScrewablePartAPI
                 this.screws.screwsRotationLocal = screwsRotationLocal;
                 this.screws.screwsSize = screwSize;
                 this.screws.screwsTightness = screwTightness;
+
+                
 
             }
             assets.Unload(false);
@@ -288,7 +315,11 @@ namespace ScrewablePartAPI
             }
         }
 
-
+        /// <summary>
+        /// makes the part screwable by adding the screw gameObjects to the parent gameObject
+        /// </summary>
+        /// <param name="screws">Screws values needed</param>
+        /// <param name="screwsScale">The scale to apply to the screw when creating it</param>
         private void MakePartScrewable(Screws screws, Vector3[] screwsScale)
         {
             for (int i = 0; i < screws.screwsPositionsLocal.Length; i++)
@@ -323,6 +354,34 @@ namespace ScrewablePartAPI
                 {
                     if (Physics.Raycast(Camera.main.ScreenPointToRay(Input.mousePosition), out hit, 1f, 1 << LayerMask.NameToLayer("DontCollide")) != false)
                     {
+                        if(spannerRatchetGameObject == null)
+                        {
+                            spannerRatchetGameObject = GameObject.Find("2Spanner");
+                        }
+
+                        if(spannerRatchetGameObject != null)
+                        {
+                            Component[] comps = spannerRatchetGameObject.GetComponentsInChildren<Transform>();
+                            for(int i = 0; i < comps.Length; i++)
+                            {
+                                if(comps[i].name == "Spanner")
+                                {
+                                    ratchetInHand = false;
+                                    break;
+
+                                }
+                                else if (comps[i].name == "Ratchet")
+                                {
+                                    ratchetInHand = true;
+
+                                    ratchetSwitch = PlayMakerFSM.FindFsmOnGameObject(GameObject.Find("Ratchet"), "Switch").FsmVariables.GetFsmBool("Switch").Value;
+
+                                    break;
+                                }
+                            }
+                        }
+
+
 
                         hitScrew = hit.collider?.gameObject;
 
@@ -341,34 +400,44 @@ namespace ScrewablePartAPI
                                 renderer.material.shader = Shader.Find("GUI/Text Shader");
                                 renderer.material.SetColor("_Color", Color.green);
 
+
                                 if (Input.GetAxis("Mouse ScrollWheel") > 0f && screwingTimer >= _boltingSpeed.Value) // forward
                                 {
                                     screwingTimer = 0;
-                                    if (screws.screwsTightness[index] >= 0 && screws.screwsTightness[index] <= 7)
+                                    if (ratchetInHand)
                                     {
-                                        AudioSource.PlayClipAtPoint(this.screw_soundClip, hitScrew.transform.position);
-                                        hitScrew.transform.Rotate(0, 0, 45);
-                                        hitScrew.transform.Translate(0f, 0f, -0.0008f); //Has to be adjustable
-
-                                        screws.screwsPositionsLocal[index] = hitScrew.transform.localPosition;
-                                        screws.screwsRotationLocal[index] = hitScrew.transform.localRotation.eulerAngles;
-                                        screws.screwsTightness[index]++;
+                                        if (!ratchetSwitch)
+                                        {
+                                            ScrewOut(screws, index);
+                                        }
+                                        else
+                                        {
+                                            ScrewIn(screws, index);
+                                        }
+                                    }
+                                    else
+                                    {
+                                        ScrewIn(screws, index);
                                     }
                                 }
                                 else if (Input.GetAxis("Mouse ScrollWheel") < 0f && screwingTimer >= _boltingSpeed.Value) // backwards
                                 {
                                     screwingTimer = 0;
-                                    if (screws.screwsTightness[index] > 0 && screws.screwsTightness[index] <= 8)
+                                    if (ratchetInHand)
                                     {
-                                        AudioSource.PlayClipAtPoint(this.screw_soundClip, hitScrew.transform.position);
-                                        hitScrew.transform.Rotate(0, 0, -45);
-                                        hitScrew.transform.Translate(0f, 0f, 0.0008f); //Has to be adjustable
-
-                                        screws.screwsPositionsLocal[index] = hitScrew.transform.localPosition;
-                                        screws.screwsRotationLocal[index] = hitScrew.transform.localRotation.eulerAngles;
-                                        screws.screwsTightness[index]--;
+                                        if (!ratchetSwitch)
+                                        {
+                                            ScrewOut(screws, index);
+                                        }
+                                        else
+                                        {
+                                            ScrewIn(screws, index);
+                                        }
                                     }
-                                    partFixed = false;
+                                    else
+                                    {
+                                        ScrewOut(screws, index);
+                                    }
                                 }
 
                                 if (this.screws.screwsTightness.All(element => element == 8) && !partFixed)
@@ -396,7 +465,37 @@ namespace ScrewablePartAPI
                 }
             }
         }
-        
+
+        private void ScrewIn(Screws screws, int screwIndex)
+        {
+            if (screws.screwsTightness[screwIndex] >= 0 && screws.screwsTightness[screwIndex] <= 7)
+            {
+                AudioSource.PlayClipAtPoint(this.screw_soundClip, hitScrew.transform.position);
+                hitScrew.transform.Rotate(0, 0, 45);
+                hitScrew.transform.Translate(0f, 0f, -0.0008f); //Has to be adjustable
+
+                screws.screwsPositionsLocal[screwIndex] = hitScrew.transform.localPosition;
+                screws.screwsRotationLocal[screwIndex] = hitScrew.transform.localRotation.eulerAngles;
+                screws.screwsTightness[screwIndex]++;
+            }
+            
+        }
+
+        private void ScrewOut(Screws screws, int screwIndex)
+        {
+            if (screws.screwsTightness[screwIndex] > 0 && screws.screwsTightness[screwIndex] <= 8)
+            {
+                AudioSource.PlayClipAtPoint(this.screw_soundClip, hitScrew.transform.position);
+                hitScrew.transform.Rotate(0, 0, -45);
+                hitScrew.transform.Translate(0f, 0f, 0.0008f); //Has to be adjustable
+
+                screws.screwsPositionsLocal[screwIndex] = hitScrew.transform.localPosition;
+                screws.screwsRotationLocal[screwIndex] = hitScrew.transform.localRotation.eulerAngles;
+                screws.screwsTightness[screwIndex]--;
+            }
+            partFixed = false;
+        }
+
 
         /// <summary>
         /// <para>Call this in ModApi.Attachable part function "disassemble(bool startUp = false) on the static made screwable part AFTER base.disassemble(startUp);</para>
