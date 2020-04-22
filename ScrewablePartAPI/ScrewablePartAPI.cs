@@ -23,7 +23,7 @@ namespace ScrewablePartAPI
         /// <summary>
         /// will return the version of this API in case you need it for something.
         /// </summary>
-        public static string apiVersion = "1.2";
+        public static string apiVersion = "1.2.1";
 
         private GameObject parentGameObject;
         private Collider parentGameObjectCollider;
@@ -172,7 +172,7 @@ namespace ScrewablePartAPI
 
             this.selectedItem = GameObject.Find("PLAYER/Pivot/AnimPivot/Camera/FPSCamera/SelectItem");
             this.selectedItemFSM = selectedItem.GetComponent<PlayMakerFSM>();
-
+            
             FsmHook.FsmInject(selectedItem, "Hand", new Action(ChangedToHand));
             FsmHook.FsmInject(selectedItem, "Tools", new Action(ChangedToTools));
 
@@ -530,15 +530,36 @@ namespace ScrewablePartAPI
         /// </summary>
         public void setScrewsOnAssemble()
         {
-            resetScrewsOnDisassemble();
-            for (int i = 0; i < this.screws.screwsPositionsLocal.Length; i++)
+            if (parentGameObject != null)
             {
-                GameObject tmpScrew = GameObject.Find(parentGameObject.name + "_SCREW" + (i + 1));
-                tmpScrew.transform.localPosition = this.screws.screwsPositionsLocal[i];
+                int[] screwTightness = new int[this.screws.screwsPositionsLocal.Length];
+                for (int i = 0; i < screwTightness.Length; i++)
+                {
+                    screwTightness[i] = 0;
+                }
 
-                tmpScrew.transform.localRotation = Quaternion.Euler(this.screws.screwsRotationLocal[i]);
+                this.screws.screwsTightness = screwTightness;
+
+                for (int i = 0; i < screwTightness.Length; i++)
+                {
+                    this.screws.screwsPositionsLocal[i].x = this.screwsDefaultPositionLocal[i].x;
+                    this.screws.screwsPositionsLocal[i].y = this.screwsDefaultPositionLocal[i].y;
+                    this.screws.screwsPositionsLocal[i].z = this.screwsDefaultPositionLocal[i].z;
+
+                    this.screws.screwsRotationLocal[i].x = this.screwsDefaultRotationLocal[i].x;
+                    this.screws.screwsRotationLocal[i].y = this.screwsDefaultRotationLocal[i].y;
+                    this.screws.screwsRotationLocal[i].z = this.screwsDefaultRotationLocal[i].z;
+                }
+
+                for (int i = 0; i < this.screws.screwsPositionsLocal.Length; i++)
+                {
+                    GameObject tmpScrew = GameObject.Find(parentGameObject.name + "_SCREW" + (i + 1));
+                    tmpScrew.transform.localPosition = this.screws.screwsPositionsLocal[i];
+
+                    tmpScrew.transform.localRotation = Quaternion.Euler(this.screws.screwsRotationLocal[i]);
+                }
+                this.parentGameObjectCollider.enabled = true;
             }
-            this.parentGameObjectCollider.enabled = true;
         }
 
         /// <summary>
