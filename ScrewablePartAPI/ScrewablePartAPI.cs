@@ -295,23 +295,26 @@ namespace ScrewablePartAPI
         /// <param name="screws">The screws of the single part</param>
         private void MakePartScrewable(Screws screws)
         {
-            for (int i = 0; i < screws.screwsPositionsLocal.Length; i++)
+            if (screws != null && screws.screwsPositionsLocal != null && screws.screwsRotationLocal != null && screws.screwsTightness != null)
             {
-                GameObject screw = GameObject.Instantiate(screwModelToUse);
-                screw.name = (parentGameObject.name + "_SCREW" + (i + 1));
-                screw.transform.SetParent(parentGameObject.transform);
-                screw.transform.localPosition = screws.screwsPositionsLocal[i];
-                screw.transform.localScale = new Vector3(0.7f, 0.7f, 0.7f);
-                screw.transform.localRotation = new Quaternion { eulerAngles = screws.screwsRotationLocal[i] };
-                screw.layer = LayerMask.NameToLayer("DontCollide");
-            }
+                for (int i = 0; i < screws.screwsPositionsLocal.Length; i++)
+                {
+                    GameObject screw = GameObject.Instantiate(screwModelToUse);
+                    screw.name = (parentGameObject.name + "_SCREW" + (i + 1));
+                    screw.transform.SetParent(parentGameObject.transform);
+                    screw.transform.localPosition = screws.screwsPositionsLocal[i];
+                    screw.transform.localScale = new Vector3(0.7f, 0.7f, 0.7f);
+                    screw.transform.localRotation = new Quaternion { eulerAngles = screws.screwsRotationLocal[i] };
+                    screw.layer = LayerMask.NameToLayer("DontCollide");
+                }
 
-            this.parentGameObjectCollider = this.parentGameObject.GetComponent<Collider>();
-            if (screws.screwsTightness.All(element => element == 8))
-            {
-                //All Screws tight. Make part fixed
-                this.parentGameObjectCollider.enabled = false;
-                partFixed = true;
+                this.parentGameObjectCollider = this.parentGameObject.GetComponent<Collider>();
+                if (screws.screwsTightness.All(element => element == 8))
+                {
+                    //All Screws tight. Make part fixed
+                    this.parentGameObjectCollider.enabled = false;
+                    partFixed = true;
+                }
             }
         }
 
@@ -322,23 +325,26 @@ namespace ScrewablePartAPI
         /// <param name="screwsScale">The scale to apply to the screw when creating it</param>
         private void MakePartScrewable(Screws screws, Vector3[] screwsScale)
         {
-            for (int i = 0; i < screws.screwsPositionsLocal.Length; i++)
+            if(screws != null && screws.screwsPositionsLocal != null && screws.screwsRotationLocal != null && screws.screwsTightness != null && screwsScale != null)
             {
-                GameObject screw = GameObject.Instantiate(screwModelToUse);
-                screw.name = (parentGameObject.name + "_SCREW" + (i + 1));
-                screw.transform.SetParent(parentGameObject.transform);
-                screw.transform.localPosition = screws.screwsPositionsLocal[i];
-                screw.transform.localScale = screwsScale[i];
-                screw.transform.localRotation = new Quaternion { eulerAngles = screws.screwsRotationLocal[i] };
-                screw.layer = LayerMask.NameToLayer("DontCollide");
-            }
+                for (int i = 0; i < screws.screwsPositionsLocal.Length; i++)
+                {
+                    GameObject screw = GameObject.Instantiate(screwModelToUse);
+                    screw.name = (parentGameObject.name + "_SCREW" + (i + 1));
+                    screw.transform.SetParent(parentGameObject.transform);
+                    screw.transform.localPosition = screws.screwsPositionsLocal[i];
+                    screw.transform.localScale = screwsScale[i];
+                    screw.transform.localRotation = new Quaternion { eulerAngles = screws.screwsRotationLocal[i] };
+                    screw.layer = LayerMask.NameToLayer("DontCollide");
+                }
 
-            this.parentGameObjectCollider = this.parentGameObject.GetComponent<Collider>();
-            if (screws.screwsTightness.All(element => element == 8))
-            {
-                //All Screws tight. Make part fixed
-                this.parentGameObjectCollider.enabled = false;
-                partFixed = true;
+                this.parentGameObjectCollider = this.parentGameObject.GetComponent<Collider>();
+                if (screws.screwsTightness.All(element => element == 8))
+                {
+                    //All Screws tight. Make part fixed
+                    this.parentGameObjectCollider.enabled = false;
+                    partFixed = true;
+                }
             }
         }
 
