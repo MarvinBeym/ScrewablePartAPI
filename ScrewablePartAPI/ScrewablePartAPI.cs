@@ -42,6 +42,9 @@ namespace ScrewablePartAPI
         private Material screw_material;
         private AssetBundle assets;
 
+        //Clamp
+        private GameObject clampModel;
+        private int clampsAdded = 1;
 
         private GameObject selectedItem;
         private PlayMakerFSM selectedItemFSM;
@@ -69,7 +72,7 @@ namespace ScrewablePartAPI
         public ScrewablePart(SortedList<String, Screws> screwsListSave, Mod mod, GameObject parentGameObject, Vector3[] screwsPositionsLocal, Vector3[] screwsRotationLocal, int screwsSizeForAll, string screwType)
         {
             this.assets = LoadAssets.LoadBundle(mod, "screwableapi.unity3d");
-
+            clampModel = (assets.LoadAsset("Tube_Clamp.prefab") as GameObject);
             this.screwModelToUse = loadscrewModelToUse(screwType);
             this.screw_material = assets.LoadAsset<Material>("Screw-Material.mat");
             this.screw_soundClip = (assets.LoadAsset("screwable_sound.wav") as AudioClip);
@@ -102,6 +105,41 @@ namespace ScrewablePartAPI
                 else
                 {
                     this.screws = new Screws();
+
+                    //Save provided but part not found inside
+                    this.screws = new Screws();
+
+                    //Initialize screwSize
+                    int[] screwSize = new int[screwsPositionsLocal.Length];
+                    for (int i = 0; i < screwSize.Length; i++)
+                    {
+                        screwSize[i] = screwsSizeForAll;
+                    }
+
+                    for (int i = 0; i < screwSize.Length; i++)
+                    {
+                        if (screwSize[i] < 5)
+                        {
+                            screwSize[i] = 5;
+                        }
+                        else if (screwSize[i] > 15)
+                        {
+                            screwSize[i] = 15;
+                        }
+                    }
+
+                    //Initialize screwTightness
+                    int[] screwTightness = new int[screwsPositionsLocal.Length];
+                    for (int i = 0; i < screwTightness.Length; i++)
+                    {
+                        screwTightness[i] = 0;
+                    }
+
+                    this.screws.partName = parentGameObject.name;
+                    this.screws.screwsPositionsLocal = screwsPositionsLocal;
+                    this.screws.screwsRotationLocal = screwsRotationLocal;
+                    this.screws.screwsSize = screwSize;
+                    this.screws.screwsTightness = screwTightness;
                 }
             }
 
@@ -165,7 +203,7 @@ namespace ScrewablePartAPI
         public ScrewablePart(SortedList<String, Screws> screwsListSave, Mod mod, GameObject parentGameObject, Vector3[] screwsPositionsLocal, Vector3[] screwsRotationLocal, Vector3[] screwsScale, int screwsSizeForAll, string screwType)
         {
             this.assets = LoadAssets.LoadBundle(mod, "screwableapi.unity3d");
-            
+            clampModel = (assets.LoadAsset("Tube_Clamp.prefab") as GameObject);
             this.screwModelToUse = loadscrewModelToUse(screwType);
             this.screw_material = assets.LoadAsset<Material>("Screw-Material.mat");
             this.screw_soundClip = (assets.LoadAsset("screwable_sound.wav") as AudioClip);
@@ -197,7 +235,40 @@ namespace ScrewablePartAPI
                 }
                 else
                 {
+                    //Save provided but part not found inside
                     this.screws = new Screws();
+
+                    //Initialize screwSize
+                    int[] screwSize = new int[screwsPositionsLocal.Length];
+                    for (int i = 0; i < screwSize.Length; i++)
+                    {
+                        screwSize[i] = screwsSizeForAll;
+                    }
+
+                    for (int i = 0; i < screwSize.Length; i++)
+                    {
+                        if (screwSize[i] < 5)
+                        {
+                            screwSize[i] = 5;
+                        }
+                        else if (screwSize[i] > 15)
+                        {
+                            screwSize[i] = 15;
+                        }
+                    }
+
+                    //Initialize screwTightness
+                    int[] screwTightness = new int[screwsPositionsLocal.Length];
+                    for (int i = 0; i < screwTightness.Length; i++)
+                    {
+                        screwTightness[i] = 0;
+                    }
+
+                    this.screws.partName = parentGameObject.name;
+                    this.screws.screwsPositionsLocal = screwsPositionsLocal;
+                    this.screws.screwsRotationLocal = screwsRotationLocal;
+                    this.screws.screwsSize = screwSize;
+                    this.screws.screwsTightness = screwTightness;
                 }
             }
 
@@ -238,9 +309,6 @@ namespace ScrewablePartAPI
                 this.screws.screwsRotationLocal = screwsRotationLocal;
                 this.screws.screwsSize = screwSize;
                 this.screws.screwsTightness = screwTightness;
-
-                
-
             }
             assets.Unload(false);
             MakePartScrewable(this.screws, screwsScale);
@@ -317,6 +385,24 @@ namespace ScrewablePartAPI
                 }
             }
         }
+
+        /// <summary>
+        /// Adds a clamp model to the parent gameObject. This can be used for tubes to have a realistic connector
+        /// </summary>
+        /// <param name="position">The position of the clamp on the parent</param>
+        /// <param name="rotation">The rotation of the clamp on the parent</param>
+        /// <param name="scale">The scale of the clamp on the parent</param>
+        public void AddClampModel(Vector3 position, Vector3 rotation, Vector3 scale)
+        {
+            GameObject clamp = GameObject.Instantiate(clampModel);
+            clamp.name = "CLAMP" + clampsAdded;
+            clampsAdded++;
+            clamp.transform.SetParent(parentGameObject.transform);
+            clamp.transform.localPosition = position;
+            clamp.transform.localScale = scale;
+            clamp.transform.localRotation = new Quaternion { eulerAngles = rotation };
+        }
+
 
         /// <summary>
         /// makes the part screwable by adding the screw gameObjects to the parent gameObject
