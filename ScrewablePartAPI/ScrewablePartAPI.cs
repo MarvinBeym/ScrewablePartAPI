@@ -395,7 +395,7 @@ namespace ScrewablePartAPI
         public void AddClampModel(Vector3 position, Vector3 rotation, Vector3 scale)
         {
             GameObject clamp = GameObject.Instantiate(clampModel);
-            clamp.name = "CLAMP" + clampsAdded;
+            clamp.name = parentGameObject.name + "_CLAMP" + clampsAdded;
             clampsAdded++;
             clamp.transform.SetParent(parentGameObject.transform);
             clamp.transform.localPosition = position;
