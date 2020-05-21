@@ -23,14 +23,15 @@ namespace ScrewablePartAPI
         /// <summary>
         /// will return the version of this API in case you need it for something.
         /// </summary>
-        public static string apiVersion = "1.3";
+        public static string apiVersion = "1.3.1";
 
         private GameObject parentGameObject;
         private Collider parentGameObjectCollider;
         private GameObject screwModelToUse;
         private Screws screws;
         private AudioClip screw_soundClip;
-        
+        private ScrewableLogic screwableLogic;
+
         private float screwingTimer;
         private Vector3[] screwsDefaultPositionLocal;
         private Vector3[] screwsDefaultRotationLocal;
@@ -311,6 +312,7 @@ namespace ScrewablePartAPI
                 this.screws.screwsTightness = screwTightness;
             }
             assets.Unload(false);
+
             MakePartScrewable(this.screws, screwsScale);
         }
 
@@ -373,7 +375,7 @@ namespace ScrewablePartAPI
                     screw.transform.localPosition = screws.screwsPositionsLocal[i];
                     screw.transform.localScale = new Vector3(0.7f, 0.7f, 0.7f);
                     screw.transform.localRotation = new Quaternion { eulerAngles = screws.screwsRotationLocal[i] };
-                    screw.layer = LayerMask.NameToLayer("DontCollide");
+                    screw.layer = LayerMask.NameToLayer("Bolts");
                 }
 
                 this.parentGameObjectCollider = this.parentGameObject.GetComponent<Collider>();
@@ -421,7 +423,7 @@ namespace ScrewablePartAPI
                     screw.transform.localPosition = screws.screwsPositionsLocal[i];
                     screw.transform.localScale = screwsScale[i];
                     screw.transform.localRotation = new Quaternion { eulerAngles = screws.screwsRotationLocal[i] };
-                    screw.layer = LayerMask.NameToLayer("DontCollide");
+                    screw.layer = LayerMask.NameToLayer("Bolts");
                 }
 
                 this.parentGameObjectCollider = this.parentGameObject.GetComponent<Collider>();
@@ -432,11 +434,13 @@ namespace ScrewablePartAPI
                     partFixed = true;
                 }
             }
+            screwableLogic = parentGameObject.AddComponent<ScrewableLogic>();
+            screwableLogic.SetSavedInformation(screws, screw_material, screw_soundClip, parentGameObject, parentGameObjectCollider);
         }
 
+        [ObsoleteAttribute("This method is obsolete. This is now handled by a Component on each part. No need to call this anymore", true)]
         /// <summary>
-        /// Call this on the part inside your mods Update() method.
-        /// if you want to stop checking, comment this out or handle it using a bool value so it won't be called
+        /// This is now obsolete. DO NOT USE THIS.
         /// </summary>
         public void DetectScrewing()
         {
@@ -444,7 +448,7 @@ namespace ScrewablePartAPI
             {
                 if (toolInHand == true)
                 {
-                    if (Physics.Raycast(Camera.main.ScreenPointToRay(Input.mousePosition), out hit, 1f, 1 << LayerMask.NameToLayer("DontCollide")) != false)
+                    if (Physics.Raycast(Camera.main.ScreenPointToRay(Input.mousePosition), out hit, 1f, 1 << LayerMask.NameToLayer("Bolts")) != false)
                     {
                         if(spannerRatchetGameObject == null)
                         {
@@ -685,6 +689,7 @@ namespace ScrewablePartAPI
 
                 for (int i = 0; i < screwableParts.Length; i++)
                 {
+                    screwableParts[i].screws = screwableParts[i].screwableLogic.GetSaveInformation();
                     screwsList.Add(screwableParts[i].screws.partName, screwableParts[i].screws);
                 }
 
