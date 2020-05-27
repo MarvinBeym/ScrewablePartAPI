@@ -379,10 +379,14 @@ namespace ScrewablePartAPI
                     screw.transform.localPosition = screws.screwsPositionsLocal[i];
                     screw.transform.localScale = new Vector3(0.7f, 0.7f, 0.7f);
                     screw.transform.localRotation = new Quaternion { eulerAngles = screws.screwsRotationLocal[i] };
-                    screw.layer = LayerMask.NameToLayer("Bolts");
+                    screw.layer = LayerMask.NameToLayer("DontCollide");
                 }
 
                 this.parentGameObjectCollider = this.parentGameObject.GetComponent<Collider>();
+
+                screwableLogic = parentGameObject.AddComponent<ScrewableLogic>();
+                screwableLogic.SetSavedInformation(screws, screw_material, screw_soundClip, parentGameObject, parentGameObjectCollider, this);
+
                 if (screws.screwsTightness.All(element => element == 8))
                 {
                     //All Screws tight. Make part fixed
@@ -427,7 +431,7 @@ namespace ScrewablePartAPI
                     screw.transform.localPosition = screws.screwsPositionsLocal[i];
                     screw.transform.localScale = screwsScale[i];
                     screw.transform.localRotation = new Quaternion { eulerAngles = screws.screwsRotationLocal[i] };
-                    screw.layer = LayerMask.NameToLayer("Bolts");
+                    screw.layer = LayerMask.NameToLayer("DontCollide");
                 }
 
                 this.parentGameObjectCollider = this.parentGameObject.GetComponent<Collider>();
@@ -454,7 +458,7 @@ namespace ScrewablePartAPI
             {
                 if (toolInHand == true)
                 {
-                    if (Physics.Raycast(Camera.main.ScreenPointToRay(Input.mousePosition), out hit, 1f, 1 << LayerMask.NameToLayer("Bolts")) != false)
+                    if (Physics.Raycast(Camera.main.ScreenPointToRay(Input.mousePosition), out hit, 1f, 1 << LayerMask.NameToLayer("DontCollide")) != false)
                     {
                         if(spannerRatchetGameObject == null)
                         {

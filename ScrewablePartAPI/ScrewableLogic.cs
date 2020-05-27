@@ -159,7 +159,7 @@ namespace ScrewablePartAPI
         {
             if (Camera.main != null)
             {
-                if (Physics.Raycast(Camera.main.ScreenPointToRay(Input.mousePosition), out hit, 1f, 1 << LayerMask.NameToLayer("Bolts")) != false)
+                if (Physics.Raycast(Camera.main.ScreenPointToRay(Input.mousePosition), out hit, 1f, 1 << LayerMask.NameToLayer("DontCollide")) != false)
                 {
                     hitObject = hit.collider?.gameObject;
                     if (!hitObject.name.Contains("SCREW") || !hitObject.name.Contains(parentGameObject.name))
