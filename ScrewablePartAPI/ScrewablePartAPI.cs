@@ -17,7 +17,7 @@ namespace ScrewablePartAPI
     public class ScrewablePart
     {
         /// <summary>
-        /// will return if the screwable part is fixed (all screwes tight).
+        /// Returns if the current part is fixed/screwed in
         /// </summary>
         public bool partFixed = false;
         /// <summary>
@@ -316,6 +316,10 @@ namespace ScrewablePartAPI
             MakePartScrewable(this.screws, screwsScale);
         }
 
+        public void SetPartFixed(bool value)
+        {
+            this.partFixed = value;
+        }
 
         private GameObject loadscrewModelToUse(string screwType)
         {
@@ -427,15 +431,17 @@ namespace ScrewablePartAPI
                 }
 
                 this.parentGameObjectCollider = this.parentGameObject.GetComponent<Collider>();
-                if (screws.screwsTightness.All(element => element == 8))
-                {
-                    //All Screws tight. Make part fixed
-                    this.parentGameObjectCollider.enabled = false;
-                    partFixed = true;
-                }
             }
             screwableLogic = parentGameObject.AddComponent<ScrewableLogic>();
-            screwableLogic.SetSavedInformation(screws, screw_material, screw_soundClip, parentGameObject, parentGameObjectCollider);
+            screwableLogic.SetSavedInformation(screws, screw_material, screw_soundClip, parentGameObject, parentGameObjectCollider, this);
+
+            if (screws.screwsTightness.All(element => element == 8))
+            {
+                //All Screws tight. Make part fixed
+                this.parentGameObjectCollider.enabled = false;
+                partFixed = true;
+                screwableLogic.SetPartFixed(partFixed);
+            }
         }
 
         [ObsoleteAttribute("This method is obsolete. This is now handled by a Component on each part. No need to call this anymore", true)]
@@ -617,7 +623,7 @@ namespace ScrewablePartAPI
                 this.screws.screwsRotationLocal[i].y = this.screwsDefaultRotationLocal[i].y;
                 this.screws.screwsRotationLocal[i].z = this.screwsDefaultRotationLocal[i].z;
             }
-            partFixed = false;
+            screwableLogic.SetPartFixed(false);
         }
 
         /// <summary>

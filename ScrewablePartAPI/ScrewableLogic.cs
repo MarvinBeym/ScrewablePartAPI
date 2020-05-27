@@ -21,6 +21,7 @@ namespace ScrewablePartAPI
         private FsmFloat _wrenchSize;
         private FsmFloat _boltingSpeed;
         private GameObject spannerRatchetGameObject;
+        private ScrewablePart screwablePart;
         private Screws screws;
         private float screwingTimer;
         private Material screw_material;
@@ -141,6 +142,7 @@ namespace ScrewablePartAPI
                     {
                         this.parentGameObjectCollider.enabled = false;
                         partFixed = true;
+                        screwablePart.SetPartFixed(true);
                     }
                     else if (!partFixed)
                     {
@@ -213,8 +215,9 @@ namespace ScrewablePartAPI
         /// <param name="screw_soundClip">The soundclip to be played when screwing in/out</param>
         /// <param name="parentGameObject">The parent gameObject</param>
         /// <param name="parentGameObjectCollider">The parent gameObjects collider</param>
-        public void SetSavedInformation(Screws screws, Material screw_material, AudioClip screw_soundClip, GameObject parentGameObject, Collider parentGameObjectCollider)
+        public void SetSavedInformation(Screws screws, Material screw_material, AudioClip screw_soundClip, GameObject parentGameObject, Collider parentGameObjectCollider, ScrewablePart screwablePart)
         {
+            this.screwablePart = screwablePart;
             this.screws = screws;
             this.screw_material = screw_material;
             this.screw_soundClip = screw_soundClip;
@@ -261,7 +264,6 @@ namespace ScrewablePartAPI
                 screws.screwsRotationLocal[screwIndex] = hitScrew.transform.localRotation.eulerAngles;
                 screws.screwsTightness[screwIndex]++;
             }
-
         }
 
         private void ScrewOut(GameObject hitScrew, Screws screws, int screwIndex)
@@ -277,6 +279,16 @@ namespace ScrewablePartAPI
                 screws.screwsTightness[screwIndex]--;
             }
             partFixed = false;
+            screwablePart.SetPartFixed(false);
+        }
+
+        /// <summary>
+        /// Sets the logics partFixed to the parameter
+        /// </summary>
+        /// <param name="partFixed"></param>
+        public void SetPartFixed(bool partFixed)
+        {
+            this.partFixed = partFixed;
         }
     }
 }
