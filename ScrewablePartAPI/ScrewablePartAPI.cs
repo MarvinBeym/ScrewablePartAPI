@@ -458,7 +458,7 @@ namespace ScrewablePartAPI
             {
                 if (toolInHand == true)
                 {
-                    if (Physics.Raycast(Camera.main.ScreenPointToRay(Input.mousePosition), out hit, 1f, 1 << LayerMask.NameToLayer("DontCollide")) != false)
+                    if (Physics.Raycast(Camera.main.ScreenPointToRay(Input.mousePosition), out hit, 8f, 1 << LayerMask.NameToLayer("DontCollide")) != false)
                     {
                         if(spannerRatchetGameObject == null)
                         {
