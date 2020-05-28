@@ -23,7 +23,7 @@ namespace ScrewablePartAPI
         /// <summary>
         /// will return the version of this API in case you need it for something.
         /// </summary>
-        public static string apiVersion = "1.3.1";
+        public static string apiVersion = "1.3.2";
 
         private GameObject parentGameObject;
         private Collider parentGameObjectCollider;
