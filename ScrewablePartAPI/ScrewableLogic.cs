@@ -55,99 +55,95 @@ namespace ScrewablePartAPI
 
         private void DetectScrewing(GameObject hitScrew)
         {
-            if (toolInHand)
+            if (spannerRatchetGameObject == null)
             {
+                spannerRatchetGameObject = GameObject.Find("2Spanner");
+            }
 
-                if (spannerRatchetGameObject == null)
+            if (spannerRatchetGameObject != null)
+            {
+                Component[] comps = spannerRatchetGameObject.GetComponentsInChildren<Transform>();
+                for (int i = 0; i < comps.Length; i++)
                 {
-                    spannerRatchetGameObject = GameObject.Find("2Spanner");
-                }
-
-                if (spannerRatchetGameObject != null)
-                {
-                    Component[] comps = spannerRatchetGameObject.GetComponentsInChildren<Transform>();
-                    for (int i = 0; i < comps.Length; i++)
+                    if (comps[i].name == "Spanner")
                     {
-                        if (comps[i].name == "Spanner")
-                        {
-                            ratchetInHand = false;
-                            break;
+                        ratchetInHand = false;
+                        break;
 
-                        }
-                        else if (comps[i].name == "Ratchet")
-                        {
-                            ratchetInHand = true;
+                    }
+                    else if (comps[i].name == "Ratchet")
+                    {
+                        ratchetInHand = true;
 
-                            ratchetSwitch = PlayMakerFSM.FindFsmOnGameObject(GameObject.Find("Ratchet"), "Switch").FsmVariables.GetFsmBool("Switch").Value;
+                        ratchetSwitch = PlayMakerFSM.FindFsmOnGameObject(GameObject.Find("Ratchet"), "Switch").FsmVariables.GetFsmBool("Switch").Value;
 
-                            break;
-                        }
+                        break;
                     }
                 }
+            }
 
-                string screwName = hitScrew.name.Substring(hitScrew.name.LastIndexOf("_SCREW"));
-                int index = Convert.ToInt32(screwName.Replace("_SCREW", "")) - 1;
+            string screwName = hitScrew.name.Substring(hitScrew.name.LastIndexOf("_SCREW"));
+            int index = Convert.ToInt32(screwName.Replace("_SCREW", "")) - 1;
 
-                int wrenchSize = Mathf.RoundToInt(this._wrenchSize.Value * 10f);
-                int screwSize = this.screws.screwsSize[index];
-                if (wrenchSize == screwSize)
+            int wrenchSize = Mathf.RoundToInt(this._wrenchSize.Value * 10f);
+            int screwSize = this.screws.screwsSize[index];
+            if (wrenchSize == screwSize)
+            {
+                //Highlighting the currently aimed at screw
+                MeshRenderer renderer = hitObject.GetComponentInChildren<MeshRenderer>();
+                renderer.material.shader = Shader.Find("GUI/Text Shader");
+                renderer.material.SetColor("_Color", Color.green);
+
+                screwingTimer += Time.deltaTime;
+
+                if (Input.GetAxis("Mouse ScrollWheel") > 0f && screwingTimer >= _boltingSpeed.Value) // forward
                 {
-                    //Highlighting the currently aimed at screw
-                    MeshRenderer renderer = hitObject.GetComponentInChildren<MeshRenderer>();
-                    renderer.material.shader = Shader.Find("GUI/Text Shader");
-                    renderer.material.SetColor("_Color", Color.green);
-
-                    screwingTimer += Time.deltaTime;
-
-                    if (Input.GetAxis("Mouse ScrollWheel") > 0f && screwingTimer >= _boltingSpeed.Value) // forward
+                    screwingTimer = 0;
+                    if (ratchetInHand)
                     {
-                        screwingTimer = 0;
-                        if (ratchetInHand)
+                        if (!ratchetSwitch)
                         {
-                            if (!ratchetSwitch)
-                            {
-                                ScrewOut(hitScrew, screws, index);
-                            }
-                            else
-                            {
-                                ScrewIn(hitScrew, screws, index);
-                            }
+                            ScrewOut(hitScrew, screws, index);
                         }
                         else
                         {
                             ScrewIn(hitScrew, screws, index);
                         }
                     }
-                    else if (Input.GetAxis("Mouse ScrollWheel") < 0f && screwingTimer >= _boltingSpeed.Value) // backwards
+                    else
                     {
-                        screwingTimer = 0;
-                        if (ratchetInHand)
-                        {
-                            if (!ratchetSwitch)
-                            {
-                                ScrewOut(hitScrew, screws, index);
-                            }
-                            else
-                            {
-                                ScrewIn(hitScrew, screws, index);
-                            }
-                        }
-                        else
+                        ScrewIn(hitScrew, screws, index);
+                    }
+                }
+                else if (Input.GetAxis("Mouse ScrollWheel") < 0f && screwingTimer >= _boltingSpeed.Value) // backwards
+                {
+                    screwingTimer = 0;
+                    if (ratchetInHand)
+                    {
+                        if (!ratchetSwitch)
                         {
                             ScrewOut(hitScrew, screws, index);
                         }
+                        else
+                        {
+                            ScrewIn(hitScrew, screws, index);
+                        }
                     }
+                    else
+                    {
+                        ScrewOut(hitScrew, screws, index);
+                    }
+                }
 
-                    if (this.screws.screwsTightness.All(element => element == 8) && !partFixed)
-                    {
-                        this.parentGameObjectCollider.enabled = false;
-                        partFixed = true;
-                        screwablePart.SetPartFixed(true);
-                    }
-                    else if (!partFixed)
-                    {
-                        this.parentGameObjectCollider.enabled = true;
-                    }
+                if (this.screws.screwsTightness.All(element => element == 8) && !partFixed)
+                {
+                    this.parentGameObjectCollider.enabled = false;
+                    partFixed = true;
+                    screwablePart.SetPartFixed(true);
+                }
+                else if (!partFixed)
+                {
+                    this.parentGameObjectCollider.enabled = true;
                 }
             }
         }
@@ -157,7 +153,7 @@ namespace ScrewablePartAPI
         /// </summary>
         private void DetectScrew()
         {
-            if (Camera.main != null)
+            if (toolInHand && Camera.main != null)
             {
                 if (Physics.Raycast(Camera.main.ScreenPointToRay(Input.mousePosition), out hit, 1f, 1 << LayerMask.NameToLayer("DontCollide")) != false)
                 {
@@ -215,6 +211,7 @@ namespace ScrewablePartAPI
         /// <param name="screw_soundClip">The soundclip to be played when screwing in/out</param>
         /// <param name="parentGameObject">The parent gameObject</param>
         /// <param name="parentGameObjectCollider">The parent gameObjects collider</param>
+        /// <param name="screwablePart">The screwable part object</param>
         public void SetSavedInformation(Screws screws, Material screw_material, AudioClip screw_soundClip, GameObject parentGameObject, Collider parentGameObjectCollider, ScrewablePart screwablePart)
         {
             this.screwablePart = screwablePart;
