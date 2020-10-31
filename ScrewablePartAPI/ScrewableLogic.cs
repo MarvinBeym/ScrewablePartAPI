@@ -8,6 +8,7 @@ namespace ScrewablePartAPI
 {
     public class ScrewableLogic : MonoBehaviour
     {
+        private ScrewablePart api;
 
         private bool aimingAtScrew = false;
         private RaycastHit hit;
@@ -45,6 +46,12 @@ namespace ScrewablePartAPI
             _boltingSpeed = PlayMakerGlobals.Instance.Variables.GetFsmFloat("BoltingSpeed");
             _wrenchSize = PlayMakerGlobals.Instance.Variables.GetFsmFloat("ToolWrenchSize");
         }
+
+        void Init(ScrewablePart api)
+        {
+            this.api = api;
+        }
+
 
         // Update is called once per frame
         void Update()
@@ -93,7 +100,7 @@ namespace ScrewablePartAPI
                 MeshRenderer renderer = hitObject.GetComponentInChildren<MeshRenderer>();
                 renderer.material.shader = Shader.Find("GUI/Text Shader");
                 renderer.material.SetColor("_Color", Color.green);
-
+                
                 screwingTimer += Time.deltaTime;
 
                 if (Input.GetAxis("Mouse ScrollWheel") > 0f && screwingTimer >= _boltingSpeed.Value) // forward
@@ -196,6 +203,26 @@ namespace ScrewablePartAPI
                     }
                     else
                     {
+                        if ((bool)ScrewablePart.showScrewSize.Value)
+                        {
+                            PlayMakerFSM screwFsm = hitObject.GetComponent<PlayMakerFSM>();
+                            if (screwFsm.FsmName == "Screw")
+                            {
+                                try
+                                {
+                                    FsmFloat sizeFsmFloat = screwFsm.FsmVariables.FindFsmFloat("size");
+                                    if (sizeFsmFloat != null)
+                                    {
+                                        ScrewablePart.GuiInteraction = "Screw size: " + sizeFsmFloat.Value;
+                                    }
+
+                                }
+                                catch
+                                {
+
+                                }
+                            }
+                        }
                         DetectScrewing(hitObject);
                     }
                 }
@@ -253,6 +280,12 @@ namespace ScrewablePartAPI
         {
             if (screws.screwsTightness[screwIndex] >= 0 && screws.screwsTightness[screwIndex] <= 7)
             {
+                PlayMakerFSM screwFsm = hitScrew.GetComponent<PlayMakerFSM>();
+                FsmFloat tightnessFsmFloat = new FsmFloat();
+                if (screwFsm.FsmName == "Screw")
+                {
+                    tightnessFsmFloat = screwFsm.FsmVariables.FindFsmFloat("tightness");
+                }
                 AudioSource.PlayClipAtPoint(this.screw_soundClip, hitScrew.transform.position);
                 hitScrew.transform.Rotate(0, 0, 45);
                 hitScrew.transform.Translate(0f, 0f, -0.0008f); //Has to be adjustable
@@ -260,6 +293,7 @@ namespace ScrewablePartAPI
                 screws.screwsPositionsLocal[screwIndex] = hitScrew.transform.localPosition;
                 screws.screwsRotationLocal[screwIndex] = hitScrew.transform.localRotation.eulerAngles;
                 screws.screwsTightness[screwIndex]++;
+                tightnessFsmFloat.Value = screws.screwsTightness[screwIndex];
             }
         }
 
@@ -267,6 +301,12 @@ namespace ScrewablePartAPI
         {
             if (screws.screwsTightness[screwIndex] > 0 && screws.screwsTightness[screwIndex] <= 8)
             {
+                PlayMakerFSM screwFsm = hitScrew.GetComponent<PlayMakerFSM>();
+                FsmFloat tightnessFsmFloat = new FsmFloat();
+                if (screwFsm.FsmName == "Screw")
+                {
+                    tightnessFsmFloat = screwFsm.FsmVariables.FindFsmFloat("tightness");
+                }
                 AudioSource.PlayClipAtPoint(this.screw_soundClip, hitScrew.transform.position);
                 hitScrew.transform.Rotate(0, 0, -45);
                 hitScrew.transform.Translate(0f, 0f, 0.0008f); //Has to be adjustable
@@ -274,6 +314,7 @@ namespace ScrewablePartAPI
                 screws.screwsPositionsLocal[screwIndex] = hitScrew.transform.localPosition;
                 screws.screwsRotationLocal[screwIndex] = hitScrew.transform.localRotation.eulerAngles;
                 screws.screwsTightness[screwIndex]--;
+                tightnessFsmFloat.Value = screws.screwsTightness[screwIndex];
             }
             partFixed = false;
             screwablePart.SetPartFixed(false);

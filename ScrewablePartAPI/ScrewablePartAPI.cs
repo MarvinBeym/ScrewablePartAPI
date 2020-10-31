@@ -31,6 +31,7 @@ namespace ScrewablePartAPI
             Screw3
         }
 
+        public static Settings showScrewSize = new Settings("showScrewSize", "Show screw size", false);
 
         /// <summary>
         /// Returns if the current part is fixed/screwed in
@@ -79,6 +80,79 @@ namespace ScrewablePartAPI
         /// <para>the constructor will auto find the correct gameObject to create the screws on (if names did not change)</para>
         /// </summary>
         /// <param name="screwsListSave">SortedList of saved information for ALL Parts!</param>
+        /// <param name="screwsAssetBundle">The asset bundle (the loaded "screwableapi.unity3d")</param>
+        /// <param name="parentGameObject">The "parentGameObject" GameObject on which screws should be placed. This should always be the ModAPI part.rigidPart when using modapi!!!</param>
+        /// <param name="screwsPositionLocal">The position where each screw should be placed on the parentGameObject GameObject</param>
+        /// <param name="screwsRotationLocal">The rotation the screws should have when placed on parentGameObject GameObject</param>
+        /// <param name="screwsScale">The scale the screws should have IF null = all screws have scale 1, 1, 1. IF less than number of screws = all screws will use the scale from screwsScale[0]</param>
+        /// <param name="screwsSizeForAll">The size for all screws to be used as a single value if it is set to 8 you need to use the wrench size 8 to install the parts</param>
+        /// <param name="screwType">The screw type to use, choose "screwable_nut", "screwable_screw1", "screwable_screw2" or "screwable_screw3" if not written correctly will load "screwable_nut"</param>
+        [Obsolete("This constructor is obsolete use the one that requires you to pass a single array of Screw objects", false)]
+        public ScrewablePart(SortedList<String, Screws> screwsListSave, AssetBundle screwsAssetBundle, GameObject parentGameObject, Vector3[] screwsPositionLocal, Vector3[] screwsRotationLocal, Vector3[] screwsScale = null, int screwsSizeForAll = 10, ScrewType screwType = ScrewType.Screw1)
+        {
+            SetAssets(screwsAssetBundle, screwType);
+            InitHandDetection();
+
+            this.parentGameObject = parentGameObject;
+
+            screwsDefaultPositionLocal = screwsPositionLocal.Clone() as Vector3[];
+            screwsDefaultRotationLocal = screwsRotationLocal.Clone() as Vector3[];
+
+            LoadScrewsSave(screwsListSave, screwsDefaultPositionLocal, screwsDefaultRotationLocal, screwsSizeForAll);
+
+            Vector3[] definedScrewScales = DefineScrewScales(screwsPositionLocal.Length, screwsScale);
+            MakePartScrewable(this.screws, definedScrewScales);
+        }
+
+        /// <summary>
+        /// Generates the Screws for a part and makes them detectable using the DetectScrewing method
+        /// <para>Dont ever change the name of the SCREW GameObject that gets created, which is always parentGameObject.name + "_SCREW + screwNumber</para>
+        /// <para>example: Racing Turbocharger_SCREW1</para>
+        /// <para>the constructor will auto find the correct gameObject to create the screws on (if names did not change)</para>
+        /// </summary>
+        /// <param name="screwsListSave">SortedList of saved information for ALL Parts!</param>
+        /// <param name="screwsAssetBundle">The asset bundle (the loaded "screwableapi.unity3d")</param>
+        /// <param name="parentGameObject">The "parentGameObject" GameObject on which screws should be placed. This should always be the ModAPI part.rigidPart when using modapi!!!</param>
+        /// <param name="screws">The defined Screws</param>
+        public ScrewablePart(SortedList<String, Screws> screwsListSave, AssetBundle screwsAssetBundle, GameObject parentGameObject, Screw[] screws)
+        {
+            screw_material = screwsAssetBundle.LoadAsset<Material>("Screw-Material.mat");
+            screw_soundClip = (screwsAssetBundle.LoadAsset("screwable_sound.wav") as AudioClip);
+            clampModel = (screwsAssetBundle.LoadAsset("Tube_Clamp.prefab") as GameObject);
+
+            screwsDefaultPositionLocal = new Vector3[screws.Length];
+            screwsDefaultRotationLocal = new Vector3[screws.Length];
+            int[] sizes = new int[screws.Length];
+            float[] scales = new float[screws.Length];
+            for(int i = 0; i < screws.Length; i++)
+            {
+                Screw screw = screws[i];
+                screw.model = LoadScrewModelToUse(screw.type, screwsAssetBundle);
+                screwsDefaultPositionLocal[i] = screw.position;
+                screwsDefaultRotationLocal[i] = screw.rotation;
+                sizes[i] = screw.size;
+                scales[i] = screw.scale;
+            }
+
+            InitHandDetection();
+
+            this.parentGameObject = parentGameObject;
+
+            LoadScrewsSave(screwsListSave, screwsDefaultPositionLocal, screwsDefaultRotationLocal, sizes);
+
+            Vector3[] definedScrewScales = DefineScrewScales(screws.Length, scales);
+
+            MakePartScrewable(this.screws, definedScrewScales, screws);
+        }
+
+
+        /// <summary>
+        /// Generates the Screws for a part and makes them detectable using the DetectScrewing method
+        /// <para>Dont ever change the name of the SCREW GameObject that gets created, which is always parentGameObject.name + "_SCREW + screwNumber</para>
+        /// <para>example: Racing Turbocharger_SCREW1</para>
+        /// <para>the constructor will auto find the correct gameObject to create the screws on (if names did not change)</para>
+        /// </summary>
+        /// <param name="screwsListSave">SortedList of saved information for ALL Parts!</param>
         /// <param name="mod">Your mod, usually "this" - needed to load scriptapi assets based on your mods asset folder path</param>
         /// <param name="parentGameObject">The "parentGameObject" GameObject on which screws should be placed. This should always be the ModAPI part.rigidPart when using modapi!!!</param>
         /// <param name="screwsPositionLocal">The position where each screw should be placed on the parentGameObject GameObject</param>
@@ -100,7 +174,42 @@ namespace ScrewablePartAPI
 
             LoadScrewsSave(screwsListSave, screwsDefaultPositionLocal, screwsDefaultRotationLocal, screwsSizeForAll);
 
-            Vector3[] definedScrewScales = DefineScrewScales(screwsPositionLocal.Length, null);
+            Vector3[] definedScrewScales = DefineScrewScales(screwsPositionLocal.Length, new Vector3[0]);
+
+            MakePartScrewable(this.screws, definedScrewScales);
+        }
+
+        /// <summary>
+        /// Generates the Screws for a part and makes them detectable using the DetectScrewing method
+        /// <para>Dont ever change the name of the SCREW GameObject that gets created, which is always parentGameObject.name + "_SCREW + screwNumber</para>
+        /// <para>example: Racing Turbocharger_SCREW1</para>
+        /// <para>the constructor will auto find the correct gameObject to create the screws on (if names did not change)</para>
+        /// </summary>
+        /// <param name="screwsListSave">SortedList of saved information for ALL Parts!</param>
+        /// <param name="mod">Your mod, usually "this" - needed to load scriptapi assets based on your mods asset folder path</param>
+        /// <param name="parentGameObject">The "parentGameObject" GameObject on which screws should be placed. This should always be the ModAPI part.rigidPart when using modapi!!!</param>
+        /// <param name="screwsPositionLocal">The position where each screw should be placed on the parentGameObject GameObject</param>
+        /// <param name="screwsRotationLocal">The rotation the screws should have when placed on parentGameObject GameObject</param>
+        /// <param name="screwsScale">The scale the screw object should have (1 = defaults game scale)</param>
+        /// <param name="screwsSizeForAll">The size for all screws to be used as a single value if it is set to 8 you need to use the wrench size 8 to install the parts</param>
+        /// <param name="screwType">The screw type to use, choose "screwable_nut", "screwable_screw1", "screwable_screw2" or "screwable_screw3" if not written correctly will load "screwable_nut"</param>
+        [Obsolete("This constructor is obsolete, it has been replaced with one where you pass the already loaded assetsBundle to the constructor. It also improves the scale setting by allowing it to be empty or just one", false)]
+        public ScrewablePart(SortedList<String, Screws> screwsListSave, Mod mod, GameObject parentGameObject, Vector3[] screwsPositionLocal, Vector3[] screwsRotationLocal, Vector3[] screwsScale, int screwsSizeForAll, string screwType)
+        {
+            AssetBundle assets = LoadAssets.LoadBundle(mod, "screwableapi.unity3d");
+            SetAssets(assets, StringScrewTypeToEnum(screwType));
+            assets.Unload(false);
+            InitHandDetection();
+
+
+            this.parentGameObject = parentGameObject;
+
+            this.screwsDefaultPositionLocal = screwsPositionLocal.Clone() as Vector3[];
+            this.screwsDefaultRotationLocal = screwsRotationLocal.Clone() as Vector3[];
+
+            LoadScrewsSave(screwsListSave, screwsDefaultPositionLocal, screwsDefaultRotationLocal, screwsSizeForAll);
+
+            Vector3[] definedScrewScales = DefineScrewScales(screwsPositionLocal.Length, screwsScale);
 
             MakePartScrewable(this.screws, definedScrewScales);
         }
@@ -120,6 +229,7 @@ namespace ScrewablePartAPI
         /// <param name="screwsPositionLocal">All the local positions of the screws for one part</param>
         /// <param name="screwsRotationLocal">All the local rotations of the screws for one part</param>
         /// <param name="screwsSizeForAll">The screw size (what ratchet/wrench is needed)</param>
+        [Obsolete("Only needed for compatibility with older versions", false)]
         private void LoadScrewsSave(SortedList<String, Screws> screwsListSave, Vector3[] screwsPositionLocal, Vector3[] screwsRotationLocal, int screwsSizeForAll)
         {
 
@@ -211,43 +321,104 @@ namespace ScrewablePartAPI
 
             }
         }
-
-        /// <summary>
-        /// Generates the Screws for a part and makes them detectable using the DetectScrewing method
-        /// <para>Dont ever change the name of the SCREW GameObject that gets created, which is always parentGameObject.name + "_SCREW + screwNumber</para>
-        /// <para>example: Racing Turbocharger_SCREW1</para>
-        /// <para>the constructor will auto find the correct gameObject to create the screws on (if names did not change)</para>
-        /// </summary>
-        /// <param name="screwsListSave">SortedList of saved information for ALL Parts!</param>
-        /// <param name="screwsAssetBundle">The asset bundle (the loaded "screwableapi.unity3d")</param>
-        /// <param name="parentGameObject">The "parentGameObject" GameObject on which screws should be placed. This should always be the ModAPI part.rigidPart when using modapi!!!</param>
-        /// <param name="screwsPositionLocal">The position where each screw should be placed on the parentGameObject GameObject</param>
-        /// <param name="screwsRotationLocal">The rotation the screws should have when placed on parentGameObject GameObject</param>
-        /// <param name="screwsScale">The scale the screws should have IF null = all screws have scale 1, 1, 1. IF less than number of screws = all screws will use the scale from screwsScale[0]</param>
-        /// <param name="screwsSizeForAll">The size for all screws to be used as a single value if it is set to 8 you need to use the wrench size 8 to install the parts</param>
-        /// <param name="screwType">The screw type to use, choose "screwable_nut", "screwable_screw1", "screwable_screw2" or "screwable_screw3" if not written correctly will load "screwable_nut"</param>
-        public ScrewablePart(SortedList<String, Screws> screwsListSave, AssetBundle screwsAssetBundle, GameObject parentGameObject, Vector3[] screwsPositionLocal, Vector3[] screwsRotationLocal, Vector3[] screwsScale = null, int screwsSizeForAll = 10, ScrewType screwType = ScrewType.Screw1)
+        private void LoadScrewsSave(SortedList<String, Screws> screwsListSave, Vector3[] screwsPositionLocal, Vector3[] screwsRotationLocal, int[] sizes)
         {
-            SetAssets(screwsAssetBundle, screwType);
-            InitHandDetection();
 
-            this.parentGameObject = parentGameObject;
+            if (screwsListSave != null)
+            {
+                Screws loadedScrews;
+                bool successWhenLoading = screwsListSave.TryGetValue(parentGameObject.name, out loadedScrews);
+                if (successWhenLoading)
+                {
+                    //Save provided and found in file
+                    this.screws = loadedScrews;
+                }
+                else
+                {
+                    //Save provided but part not found inside
+                    this.screws = new Screws();
 
-            screwsDefaultPositionLocal = screwsPositionLocal.Clone() as Vector3[];
-            screwsDefaultRotationLocal = screwsRotationLocal.Clone() as Vector3[];
+                    //Initialize screwSize
+                    int[] screwSize = new int[screwsPositionLocal.Length];
+                    for (int i = 0; i < screwSize.Length; i++)
+                    {
+                        screwSize[i] = sizes[i];
+                    }
 
-            LoadScrewsSave(screwsListSave, screwsDefaultPositionLocal, screwsDefaultRotationLocal, screwsSizeForAll);
+                    for (int i = 0; i < screwSize.Length; i++)
+                    {
+                        if (screwSize[i] < 5)
+                        {
+                            screwSize[i] = 5;
+                        }
+                        else if (screwSize[i] > 15)
+                        {
+                            screwSize[i] = 15;
+                        }
+                    }
 
-            Vector3[] definedScrewScales = DefineScrewScales(screwsPositionLocal.Length, screwsScale);
+                    //Initialize screwTightness
+                    int[] screwTightness = new int[screwsPositionLocal.Length];
+                    for (int i = 0; i < screwTightness.Length; i++)
+                    {
+                        screwTightness[i] = 0;
+                    }
 
-            MakePartScrewable(this.screws, definedScrewScales);
+                    this.screws.partName = parentGameObject.name;
+                    this.screws.screwsPositionsLocal = screwsPositionLocal;
+                    this.screws.screwsRotationLocal = screwsRotationLocal;
+                    this.screws.screwsSize = screwSize;
+                    this.screws.screwsTightness = screwTightness;
+                }
+            }
+
+            if (this.screws == null)
+            {
+                //No Save provided
+                this.screws = new Screws();
+
+
+                //Initialize screwSize
+                int[] screwSize = new int[screwsPositionLocal.Length];
+                for (int i = 0; i < screwSize.Length; i++)
+                {
+                    screwSize[i] = sizes[i];
+                }
+
+                for (int i = 0; i < screwSize.Length; i++)
+                {
+                    if (screwSize[i] < 5)
+                    {
+                        screwSize[i] = 5;
+                    }
+                    else if (screwSize[i] > 15)
+                    {
+                        screwSize[i] = 15;
+                    }
+                }
+
+                //Initialize screwTightness
+                int[] screwTightness = new int[screwsPositionLocal.Length];
+                for (int i = 0; i < screwTightness.Length; i++)
+                {
+                    screwTightness[i] = 0;
+                }
+
+                this.screws.partName = parentGameObject.name;
+                this.screws.screwsPositionsLocal = screwsPositionLocal;
+                this.screws.screwsRotationLocal = screwsRotationLocal;
+                this.screws.screwsSize = screwSize;
+                this.screws.screwsTightness = screwTightness;
+
+            }
         }
 
+        [Obsolete("Only needed for compatibility with older versions", false)]
         private Vector3[] DefineScrewScales(int numberOfScrews, Vector3[] nonDefinedScales)
         {
             Vector3[] definedScrewScales = new Vector3[numberOfScrews];
             Vector3 scale;
-            if(nonDefinedScales == null)
+            if(nonDefinedScales.Length == 0)
             {
                 //Has not been set when creating object
                 scale = new Vector3(1, 1, 1);
@@ -273,39 +444,15 @@ namespace ScrewablePartAPI
             return definedScrewScales;
         }
 
-        /// <summary>
-        /// Generates the Screws for a part and makes them detectable using the DetectScrewing method
-        /// <para>Dont ever change the name of the SCREW GameObject that gets created, which is always parentGameObject.name + "_SCREW + screwNumber</para>
-        /// <para>example: Racing Turbocharger_SCREW1</para>
-        /// <para>the constructor will auto find the correct gameObject to create the screws on (if names did not change)</para>
-        /// </summary>
-        /// <param name="screwsListSave">SortedList of saved information for ALL Parts!</param>
-        /// <param name="mod">Your mod, usually "this" - needed to load scriptapi assets based on your mods asset folder path</param>
-        /// <param name="parentGameObject">The "parentGameObject" GameObject on which screws should be placed. This should always be the ModAPI part.rigidPart when using modapi!!!</param>
-        /// <param name="screwsPositionLocal">The position where each screw should be placed on the parentGameObject GameObject</param>
-        /// <param name="screwsRotationLocal">The rotation the screws should have when placed on parentGameObject GameObject</param>
-        /// <param name="screwsScale">The scale the screw object should have (1 = defaults game scale)</param>
-        /// <param name="screwsSizeForAll">The size for all screws to be used as a single value if it is set to 8 you need to use the wrench size 8 to install the parts</param>
-        /// <param name="screwType">The screw type to use, choose "screwable_nut", "screwable_screw1", "screwable_screw2" or "screwable_screw3" if not written correctly will load "screwable_nut"</param>
-        [Obsolete("This constructor is obsolete, it has been replaced with one where you pass the already loaded assetsBundle to the constructor. It also improves the scale setting by allowing it to be empty or just one", false)]
-        public ScrewablePart(SortedList<String, Screws> screwsListSave, Mod mod, GameObject parentGameObject, Vector3[] screwsPositionLocal, Vector3[] screwsRotationLocal, Vector3[] screwsScale, int screwsSizeForAll, string screwType)
+        private Vector3[] DefineScrewScales(int numberOfScrews, float[] scales)
         {
-            AssetBundle assets = LoadAssets.LoadBundle(mod, "screwableapi.unity3d");
-            SetAssets(assets, StringScrewTypeToEnum(screwType));
-            assets.Unload(false);
-            InitHandDetection();
+            Vector3[] definedScrewScales = new Vector3[numberOfScrews];
 
-
-            this.parentGameObject = parentGameObject;
-
-            this.screwsDefaultPositionLocal = screwsPositionLocal.Clone() as Vector3[];
-            this.screwsDefaultRotationLocal = screwsRotationLocal.Clone() as Vector3[];
-
-            LoadScrewsSave(screwsListSave, screwsDefaultPositionLocal, screwsDefaultRotationLocal, screwsSizeForAll);
-
-            Vector3[] definedScrewScales = DefineScrewScales(screwsPositionLocal.Length, screwsScale);
-
-            MakePartScrewable(this.screws, definedScrewScales);
+            for (int i = 0; i < numberOfScrews; i++)
+            {
+                definedScrewScales[i] = new Vector3(scales[i], scales[i], scales[i]);
+            }
+            return definedScrewScales;
         }
 
         /// <summary>
@@ -403,6 +550,7 @@ namespace ScrewablePartAPI
         /// </summary>
         /// <param name="screws">Screws values needed</param>
         /// <param name="screwsScale">The scale to apply to the screw when creating it</param>
+        [Obsolete("Only needed for compatibility with older versions", false)]
         private void MakePartScrewable(Screws screws, Vector3[] screwsScale)
         {
             if(screws != null && screws.screwsPositionsLocal != null && screws.screwsRotationLocal != null && screws.screwsTightness != null && screwsScale != null)
@@ -431,6 +579,58 @@ namespace ScrewablePartAPI
                 screwableLogic.SetPartFixed(partFixed);
             }
         }
+
+        /// <summary>
+        /// makes the part screwable by adding the screw gameObjects to the parent gameObject
+        /// </summary>
+        /// <param name="screws">Screws values needed</param>
+        /// <param name="screwsScale">The scale to apply to the screw when creating it</param>
+        /// <param name="screwArr">The array of screw objects</param>
+        private void MakePartScrewable(Screws screws, Vector3[] screwsScale, Screw[] screwArr)
+        {
+            if (screws != null && screws.screwsPositionsLocal != null && screws.screwsRotationLocal != null && screws.screwsTightness != null && screwsScale != null)
+            {
+                for (int i = 0; i < screwArr.Length; i++)
+                {
+                    GameObject screw = GameObject.Instantiate(screwArr[i].model);
+                    screw.name = (parentGameObject.name + "_SCREW" + (i + 1));
+                    screw.transform.SetParent(parentGameObject.transform);
+                    screw.transform.localPosition = screws.screwsPositionsLocal[i];
+                    screw.transform.localScale = screwsScale[i];
+                    screw.transform.localRotation = new Quaternion { eulerAngles = screws.screwsRotationLocal[i] };
+                    screw.layer = LayerMask.NameToLayer("DontCollide");
+                    
+                    PlayMakerFSM screwFSM = screw.AddComponent<PlayMakerFSM>();
+                    screwFSM.FsmName = "Screw";
+                    screwFSM.FsmDescription = "Information about ScrewablePartAPI screw";
+
+                    FsmFloat tightnessFsmFloat = new FsmFloat("tightness");
+                    FsmFloat sizeFsmFloat = new FsmFloat("size");
+
+                    tightnessFsmFloat.Value = screws.screwsTightness[i];
+                    sizeFsmFloat.Value = screws.screwsSize[i];
+
+                    screwFSM.FsmVariables.FloatVariables = new FsmFloat[]
+                    {
+                        tightnessFsmFloat,
+                        sizeFsmFloat,
+                    };
+                }
+
+                this.parentGameObjectCollider = this.parentGameObject.GetComponent<Collider>();
+            }
+            screwableLogic = parentGameObject.AddComponent<ScrewableLogic>();
+            screwableLogic.SetSavedInformation(screws, screw_material, screw_soundClip, parentGameObject, parentGameObjectCollider, this);
+
+            if (screws.screwsTightness.All(element => element == 8))
+            {
+                //All Screws tight. Make part fixed
+                this.parentGameObjectCollider.enabled = false;
+                partFixed = true;
+                screwableLogic.SetPartFixed(partFixed);
+            }
+        }
+
 
         [ObsoleteAttribute("This method is obsolete. This is now handled by a Component on each part. No need to call this anymore", true)]
         /// <summary>
@@ -615,6 +815,16 @@ namespace ScrewablePartAPI
         }
 
         /// <summary>
+        /// You can call this in your ModSettings function.
+        /// This will add an optional checkbox allowing users to have the size of the currently looked at screw displayed to them.
+        /// </summary>
+        public static void ScrewablePartApiSettingsShowSize(Mod mod)
+        {
+            Settings.AddHeader(mod, "ScrewablePartAPI");
+            Settings.AddCheckBox(mod, showScrewSize);
+        }
+
+        /// <summary>
         /// <para>Call this in ModApi.Attachable part function "assemble(bool startUp = false) on the static made screwable part AFTER base.assemble(startUp);</para>
         /// <para>call this after checking the screwable part for != null</para>
         /// </summary>
@@ -734,5 +944,21 @@ namespace ScrewablePartAPI
             // no save file exists.. //loading default save data.
             return null;
         }
+
+        /// <summary>
+        /// Used to display text to the user as a gui text
+        /// </summary>
+        public static string GuiInteraction
+        {
+            get
+            {
+                return PlayMakerGlobals.Instance.Variables.FindFsmString("GUIinteraction").Value;
+            }
+            set
+            {
+                PlayMakerGlobals.Instance.Variables.FindFsmString("GUIinteraction").Value = value;
+            }
+        }
+
     }
 }

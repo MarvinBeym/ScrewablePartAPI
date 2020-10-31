@@ -58,6 +58,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Screw.cs" />
     <Compile Include="ScrewableLogic.cs" />
     <Compile Include="Screws.cs" />
     <Compile Include="ScrewablePartAPI.cs" />
