@@ -93,6 +93,26 @@ namespace ScrewablePartAPI
             int index = Convert.ToInt32(screwName.Replace("_SCREW", "")) - 1;
 
             int wrenchSize = Mathf.RoundToInt(this._wrenchSize.Value * 10f);
+
+            if(wrenchSize > 0)
+            {
+                if ((bool)ScrewablePart.showScrewSize.Value)
+                {
+                    ScrewInfo screwInfo = hitObject.GetComponent<ScrewInfo>();
+                    try
+                    {
+                        if (screwInfo != null)
+                        {
+                            ScrewablePart.GuiInteraction = "Screw size: " + screwInfo.size;
+                        }
+                    }
+                    catch
+                    {
+
+                    }
+                }
+            }
+
             int screwSize = this.screws.screwsSize[index];
             if (wrenchSize == screwSize)
             {
@@ -203,26 +223,6 @@ namespace ScrewablePartAPI
                     }
                     else
                     {
-                        if ((bool)ScrewablePart.showScrewSize.Value)
-                        {
-                            PlayMakerFSM screwFsm = hitObject.GetComponent<PlayMakerFSM>();
-                            if (screwFsm.FsmName == "Screw")
-                            {
-                                try
-                                {
-                                    FsmFloat sizeFsmFloat = screwFsm.FsmVariables.FindFsmFloat("size");
-                                    if (sizeFsmFloat != null)
-                                    {
-                                        ScrewablePart.GuiInteraction = "Screw size: " + sizeFsmFloat.Value;
-                                    }
-
-                                }
-                                catch
-                                {
-
-                                }
-                            }
-                        }
                         DetectScrewing(hitObject);
                     }
                 }

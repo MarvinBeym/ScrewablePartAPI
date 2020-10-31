@@ -40,7 +40,7 @@ namespace ScrewablePartAPI
         /// <summary>
         /// will return the version of this API in case you need it for something.
         /// </summary>
-        public static string apiVersion = "1.4";
+        public static string apiVersion = "1.4.1";
 
         private GameObject parentGameObject;
         private Collider parentGameObjectCollider;
@@ -599,22 +599,12 @@ namespace ScrewablePartAPI
                     screw.transform.localScale = screwsScale[i];
                     screw.transform.localRotation = new Quaternion { eulerAngles = screws.screwsRotationLocal[i] };
                     screw.layer = LayerMask.NameToLayer("DontCollide");
-                    
-                    PlayMakerFSM screwFSM = screw.AddComponent<PlayMakerFSM>();
-                    screwFSM.FsmName = "Screw";
-                    screwFSM.FsmDescription = "Information about ScrewablePartAPI screw";
+                    screw.SetActive(true);
 
-                    FsmFloat tightnessFsmFloat = new FsmFloat("tightness");
-                    FsmFloat sizeFsmFloat = new FsmFloat("size");
+                    ScrewInfo screwInfo = screw.AddComponent<ScrewInfo>();
 
-                    tightnessFsmFloat.Value = screws.screwsTightness[i];
-                    sizeFsmFloat.Value = screws.screwsSize[i];
-
-                    screwFSM.FsmVariables.FloatVariables = new FsmFloat[]
-                    {
-                        tightnessFsmFloat,
-                        sizeFsmFloat,
-                    };
+                    screwInfo.tightness = screws.screwsTightness[i];
+                    screwInfo.size= screws.screwsSize[i];
                 }
 
                 this.parentGameObjectCollider = this.parentGameObject.GetComponent<Collider>();
