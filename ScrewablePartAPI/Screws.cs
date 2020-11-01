@@ -24,7 +24,7 @@ namespace ScrewablePartAPI
         public Vector3[] screwsRotationLocal;
 
         /// <summary>
-        ///  array of integers for how tight the screw should be 0-8| 0 = loose, 8 = tight
+        ///  array of integers for how tight the screw should be 0-8| 0 = loose, 8 (defined by maxTightness) = tight
         /// </summary>
         public int[] screwsTightness;
 

@@ -8,7 +8,20 @@ namespace ScrewablePartAPI
 {
     public class ScrewableLogic : MonoBehaviour
     {
+        /// <summary>
+        /// After how many steps the screw is supposed to be tight
+        /// </summary>
+        public int maxTightness = 8; //Temporary public -> should be private
+        /// <summary>
+        /// By how much ° to turn the screw object each screw in/out
+        /// </summary>
+        private float rotationStep { get { return (360 / maxTightness); } }
+        /// <summary>
+        /// By how much to move the screw object in/out
+        /// </summary>
+        private float transformStep = 0.0008f;
         private ScrewablePart api;
+
 
         private bool aimingAtScrew = false;
         private RaycastHit hit;
@@ -162,7 +175,7 @@ namespace ScrewablePartAPI
                     }
                 }
 
-                if (this.screws.screwsTightness.All(element => element == 8) && !partFixed)
+                if (this.screws.screwsTightness.All(element => element == maxTightness) && !partFixed)
                 {
                     this.parentGameObjectCollider.enabled = false;
                     partFixed = true;
@@ -278,43 +291,41 @@ namespace ScrewablePartAPI
 
         private void ScrewIn(GameObject hitScrew, Screws screws, int screwIndex)
         {
-            if (screws.screwsTightness[screwIndex] >= 0 && screws.screwsTightness[screwIndex] <= 7)
+            if (screws.screwsTightness[screwIndex] >= 0 && screws.screwsTightness[screwIndex] <= maxTightness - 1)
             {
-                PlayMakerFSM screwFsm = hitScrew.GetComponent<PlayMakerFSM>();
-                FsmFloat tightnessFsmFloat = new FsmFloat();
-                if (screwFsm.FsmName == "Screw")
-                {
-                    tightnessFsmFloat = screwFsm.FsmVariables.FindFsmFloat("tightness");
-                }
+                
                 AudioSource.PlayClipAtPoint(this.screw_soundClip, hitScrew.transform.position);
-                hitScrew.transform.Rotate(0, 0, 45);
-                hitScrew.transform.Translate(0f, 0f, -0.0008f); //Has to be adjustable
+                hitScrew.transform.Rotate(0, 0, rotationStep);
+                hitScrew.transform.Translate(0f, 0f, -transformStep);
 
                 screws.screwsPositionsLocal[screwIndex] = hitScrew.transform.localPosition;
                 screws.screwsRotationLocal[screwIndex] = hitScrew.transform.localRotation.eulerAngles;
                 screws.screwsTightness[screwIndex]++;
-                tightnessFsmFloat.Value = screws.screwsTightness[screwIndex];
+                UpdateScrewInfoTightness(hitScrew, screws.screwsTightness[screwIndex]);
+            }
+        }
+
+        private void UpdateScrewInfoTightness(GameObject screw, int tightness)
+        {
+            ScrewInfo screwInfo = screw.GetComponent<ScrewInfo>();
+            if (screwInfo != null)
+            {
+                screwInfo.tightness = tightness;
             }
         }
 
         private void ScrewOut(GameObject hitScrew, Screws screws, int screwIndex)
         {
-            if (screws.screwsTightness[screwIndex] > 0 && screws.screwsTightness[screwIndex] <= 8)
+            if (screws.screwsTightness[screwIndex] > 0 && screws.screwsTightness[screwIndex] <= maxTightness)
             {
-                PlayMakerFSM screwFsm = hitScrew.GetComponent<PlayMakerFSM>();
-                FsmFloat tightnessFsmFloat = new FsmFloat();
-                if (screwFsm.FsmName == "Screw")
-                {
-                    tightnessFsmFloat = screwFsm.FsmVariables.FindFsmFloat("tightness");
-                }
                 AudioSource.PlayClipAtPoint(this.screw_soundClip, hitScrew.transform.position);
-                hitScrew.transform.Rotate(0, 0, -45);
-                hitScrew.transform.Translate(0f, 0f, 0.0008f); //Has to be adjustable
+                hitScrew.transform.Rotate(0, 0, -rotationStep);
+                hitScrew.transform.Translate(0f, 0f, transformStep); //Has to be adjustable
 
                 screws.screwsPositionsLocal[screwIndex] = hitScrew.transform.localPosition;
                 screws.screwsRotationLocal[screwIndex] = hitScrew.transform.localRotation.eulerAngles;
                 screws.screwsTightness[screwIndex]--;
-                tightnessFsmFloat.Value = screws.screwsTightness[screwIndex];
+                UpdateScrewInfoTightness(hitScrew, screws.screwsTightness[screwIndex]);
             }
             partFixed = false;
             screwablePart.SetPartFixed(false);
