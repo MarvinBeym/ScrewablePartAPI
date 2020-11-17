@@ -40,7 +40,7 @@ namespace ScrewablePartAPI
         /// <summary>
         /// will return the version of this API in case you need it for something.
         /// </summary>
-        public static string apiVersion = "1.4.2";
+        public static string apiVersion = "1.4.3";
 
         private GameObject parentGameObject;
         private Collider parentGameObjectCollider;
@@ -712,16 +712,11 @@ namespace ScrewablePartAPI
                 SortedList<String, Screws> screwsList = new SortedList<String, Screws>();
                 if (filename.Length <= 0)
                 {
-                    filename = "SCREWSAVE_DEFAULT_CHANGE-FILENAME IN SaveScrews.txt";
+                    filename = "SCREWSAVE_DEFAULT_CHANGE_FILENAME.txt";
                     ModConsole.Warning(
                         "You set an empty filename when you used SaveScrews(...).\n" +
-                        "The name of the file was set as 'SCREWSAVE_DEFAULT_CHANGE-FILENAME IN SaveScrews.txt'.\n" +
-                        "YOU HAVE TO CHANGE THIS, If you are not the mod maker, contact the mod maker and tell him he is dump!"
+                        "YOU HAVE TO CHANGE THIS, If you are not the mod maker, contact the mod maker!"
                         );
-                }
-                else if (!filename.EndsWith(".txt"))
-                {
-                    filename = filename + ".txt";
                 }
                 string savePath = (ModLoader.GetModConfigFolder(mod) + "\\" + filename);
 
@@ -751,16 +746,11 @@ namespace ScrewablePartAPI
                 string savePath = "";
                 if (filename.Length <= 0)
                 {
-                    filename = "SCREWSAVE_DEFAULT_CHANGE-FILENAME IN SaveScrews.txt";
+                    filename = "SCREWSAVE_DEFAULT_CHANGE_FILENAME.txt";
                     ModConsole.Warning(
                         "You set an empty filename when you used SaveScrews(...).\n" +
-                        "The name of the file was set as 'SCREWSAVE_DEFAULT_CHANGE-FILENAME IN SaveScrews.txt'.\n" +
-                        "YOU HAVE TO CHANGE THIS, If you are not the mod maker, contact the mod maker and tell him he is dump!"
+                        "YOU HAVE TO CHANGE THIS, If you are not the mod maker, contact the mod maker!"
                         );
-                }
-                else if (!filename.EndsWith(".txt"))
-                {
-                    filename = filename + ".txt";
                 }
                 savePath = (ModLoader.GetModConfigFolder(mod) + "\\" + filename);
                 if (File.Exists(savePath))
