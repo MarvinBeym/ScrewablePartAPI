@@ -58,12 +58,19 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="New\Helper.cs" />
+    <Compile Include="New\NewScrew.cs" />
+    <Compile Include="New\NewScrewableLogic.cs" />
+    <Compile Include="New\NewScrewablePart.cs" />
     <Compile Include="Screw.cs" />
     <Compile Include="ScrewableLogic.cs" />
     <Compile Include="ScrewInfo.cs" />
     <Compile Include="Screws.cs" />
-    <Compile Include="ScrewablePartAPI.cs" />
+    <Compile Include="ScrewablePart.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="V2\ScrewablePartLogicV2.cs" />
+    <Compile Include="V2\ScrewV2.cs" />
+    <Compile Include="V2\ScrewablePartV2.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>

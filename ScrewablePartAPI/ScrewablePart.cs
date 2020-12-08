@@ -88,7 +88,7 @@ namespace ScrewablePartAPI
         /// <param name="screwsSizeForAll">The size for all screws to be used as a single value if it is set to 8 you need to use the wrench size 8 to install the parts</param>
         /// <param name="screwType">The screw type to use, choose "screwable_nut", "screwable_screw1", "screwable_screw2" or "screwable_screw3" if not written correctly will load "screwable_nut"</param>
         [Obsolete("This constructor is obsolete use the one that requires you to pass a single array of Screw objects", false)]
-        public ScrewablePart(SortedList<String, Screws> screwsListSave, AssetBundle screwsAssetBundle, GameObject parentGameObject, Vector3[] screwsPositionLocal, Vector3[] screwsRotationLocal, Vector3[] screwsScale = null, int screwsSizeForAll = 10, ScrewType screwType = ScrewType.Screw1)
+        public ScrewablePart(SortedList<String, Screws> screwsListSave, AssetBundle screwsAssetBundle, GameObject parentGameObject, Vector3[] screwsPositionLocal, Vector3[] screwsRotationLocal, Vector3[] screwsScale = null, int screwsSizeForAll = 10, ScrewablePart.ScrewType screwType = ScrewablePart.ScrewType.Screw1)
         {
             SetAssets(screwsAssetBundle, screwType);
             InitHandDetection();
@@ -139,12 +139,23 @@ namespace ScrewablePartAPI
             this.parentGameObject = parentGameObject;
 
             LoadScrewsSave(screwsListSave, screwsDefaultPositionLocal, screwsDefaultRotationLocal, sizes);
+            if(this.screws.screwsPositionsLocal.Length < screws.Length)
+            {
+                this.screws.screwsPositionsLocal = screwsDefaultPositionLocal;
+                this.screws.screwsRotationLocal = screwsDefaultRotationLocal;
+                this.screws.screwsSize = sizes;
+                int[] screwsTightness = new int[screws.Length];
+                for(int i = 0; i < screwsTightness.Length; i++)
+                {
+                    screwsTightness[i] = 0;
+                }
+                this.screws.screwsTightness = screwsTightness;
+            }
 
             Vector3[] definedScrewScales = DefineScrewScales(screws.Length, scales);
 
             MakePartScrewable(this.screws, definedScrewScales, screws);
         }
-
 
         /// <summary>
         /// Generates the Screws for a part and makes them detectable using the DetectScrewing method
@@ -214,7 +225,7 @@ namespace ScrewablePartAPI
             MakePartScrewable(this.screws, definedScrewScales);
         }
 
-        private void SetAssets(AssetBundle assets, ScrewType screwType)
+        private void SetAssets(AssetBundle assets, ScrewablePart.ScrewType screwType)
         {
             screwModelToUse = LoadScrewModelToUse(screwType, assets);
             screw_material = assets.LoadAsset<Material>("Screw-Material.mat");
@@ -464,20 +475,20 @@ namespace ScrewablePartAPI
         {
             this.partFixed = value;
         }
-        private ScrewType StringScrewTypeToEnum(string screwType)
+        private ScrewablePart.ScrewType StringScrewTypeToEnum(string screwType)
         {
             switch (screwType)
             {
                 case "screwable_nut":
-                    return ScrewType.Nut;
+                    return ScrewablePart.ScrewType.Nut;
                 case "screwable_screw1":
-                    return ScrewType.Screw1;
+                    return ScrewablePart.ScrewType.Screw1;
                 case "screwable_screw2":
-                    return ScrewType.Screw2;
+                    return ScrewablePart.ScrewType.Screw2;
                 case "screwable_screw3":
-                    return ScrewType.Screw3;
+                    return ScrewablePart.ScrewType.Screw3;
                 default:
-                    return ScrewType.Screw1;
+                    return ScrewablePart.ScrewType.Screw1;
             }
         }
         private void InitHandDetection()
@@ -492,17 +503,17 @@ namespace ScrewablePartAPI
             _wrenchSize = PlayMakerGlobals.Instance.Variables.GetFsmFloat("ToolWrenchSize");
         }
 
-        private GameObject LoadScrewModelToUse(ScrewType screwType, AssetBundle assets)
+        private GameObject LoadScrewModelToUse(ScrewablePart.ScrewType screwType, AssetBundle assets)
         {
             switch (screwType)
             {
-                case ScrewType.Nut:
+                case ScrewablePart.ScrewType.Nut:
                     return (assets.LoadAsset("screwable_nut.prefab") as GameObject);
-                case ScrewType.Screw1:
+                case ScrewablePart.ScrewType.Screw1:
                     return (assets.LoadAsset("screwable_screw1.prefab") as GameObject);
-                case ScrewType.Screw2:
+                case ScrewablePart.ScrewType.Screw2:
                     return (assets.LoadAsset("screwable_screw2.prefab") as GameObject);
-                case ScrewType.Screw3:
+                case ScrewablePart.ScrewType.Screw3:
                     return (assets.LoadAsset("screwable_screw3.prefab") as GameObject);
                 default:
                     return (assets.LoadAsset("screwable_nut.prefab") as GameObject);
