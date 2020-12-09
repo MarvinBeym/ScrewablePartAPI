@@ -6,11 +6,11 @@ using System.Runtime.InteropServices;
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
 [assembly: AssemblyTitle("ScrewablePartAPI")]
-[assembly: AssemblyDescription("")]
+[assembly: AssemblyDescription("Made for the game My Summer Car. Makes it possible to screw in/out mod parts.")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("")]
+[assembly: AssemblyCompany("DonnerPlays")]
 [assembly: AssemblyProduct("ScrewablePartAPI")]
-[assembly: AssemblyCopyright("Copyright ©  2017")]
+[assembly: AssemblyCopyright("Copyright © Marvin Beym  2020")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 

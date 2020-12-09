@@ -32,6 +32,13 @@
     <WarningLevel>4</WarningLevel>
     <DocumentationFile>bin\Release\ScrewablePartAPI.xml</DocumentationFile>
   </PropertyGroup>
+  <PropertyGroup>
+    <SignAssembly>false</SignAssembly>
+  </PropertyGroup>
+  <PropertyGroup>
+    <AssemblyOriginatorKeyFile>
+    </AssemblyOriginatorKeyFile>
+  </PropertyGroup>
   <ItemGroup>
     <Reference Include="MSCLoader">
       <HintPath>S:\Spiele\Steam\steamapps\common\My Summer Car\mysummercar_Data\Managed\MSCLoader.dll</HintPath>
@@ -58,10 +65,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="New\Helper.cs" />
-    <Compile Include="New\NewScrew.cs" />
-    <Compile Include="New\NewScrewableLogic.cs" />
-    <Compile Include="New\NewScrewablePart.cs" />
+    <Compile Include="Helper.cs" />
     <Compile Include="Screw.cs" />
     <Compile Include="ScrewableLogic.cs" />
     <Compile Include="ScrewInfo.cs" />

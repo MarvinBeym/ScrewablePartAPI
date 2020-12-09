@@ -7,6 +7,9 @@ using UnityEngine;
 
 namespace ScrewablePartAPI.V2
 {
+    /// <summary>
+    /// The logic that handles all the detection logic
+    /// </summary>
     public class ScrewablePartLogicV2 : MonoBehaviour
     {
         private enum Tool
@@ -22,37 +25,69 @@ namespace ScrewablePartAPI.V2
         private AudioClip screwSound;
 
         private GameObject parent;
-        private Collider parentCollider;
+        internal Collider parentCollider;
         private ScrewV2[] screws;
         private ScrewablePartV2 screwablePart;
 
         private FsmFloat _wrenchSize;
         private FsmFloat _boltingSpeed;
-        private bool isToolInHand = false;
-        private GameObject spanner;
-        private GameObject ratchet;
-        private FsmBool ratchetSwitch;
-        private ScrewV2 previousScrew;
+
+        
         private float screwingTimer;
+
+        internal static bool initAlreadyRun = false;
+        internal static bool isToolInHand = false;
+        internal static GameObject spanner;
+        internal static GameObject ratchet;
+        internal static FsmBool ratchetSwitch;
+        internal ScrewV2 previousScrew;
+
+        /// <summary>
+        /// Further initialization
+        /// For example injects hooks to the tool/hand that defines if the user has a tool in his hand
+        /// Some of the values are loaded as static and used for each and every instance of the logic to improve performance
+        /// </summary>
         void Start()
         {
-            GameObject selectedItem = GameObject.Find("PLAYER/Pivot/AnimPivot/Camera/FPSCamera/SelectItem");
-            GameObject twoSpanner = GameObject.Find("PLAYER/Pivot/AnimPivot/Camera/FPSCamera").transform.Find("2Spanner").gameObject;
-            GameObject twoSpannerPivot = twoSpanner.transform.Find("Pivot").gameObject;
-            GameObject twoSpannerPick = twoSpanner.transform.Find("Pick").gameObject;
+            if(spanner == null || ratchet == null)
+            {
+                initAlreadyRun = false;
+            }
+            if (!initAlreadyRun)
+            {
+                try
+                {
+                    GameObject selectedItem = GameObject.Find("PLAYER/Pivot/AnimPivot/Camera/FPSCamera/SelectItem");
+                    GameObject twoSpanner = GameObject.Find("PLAYER/Pivot/AnimPivot/Camera/FPSCamera").transform.Find("2Spanner").gameObject;
+                    GameObject twoSpannerPivot = twoSpanner.transform.Find("Pivot").gameObject;
+                    GameObject twoSpannerPick = twoSpanner.transform.Find("Pick").gameObject;
 
-            spanner = twoSpannerPivot.transform.Find("Spanner").gameObject;
-            ratchet = twoSpannerPivot.transform.Find("Ratchet").gameObject;
+                    spanner = twoSpannerPivot.transform.Find("Spanner").gameObject;
+                    ratchet = twoSpannerPivot.transform.Find("Ratchet").gameObject;
 
-            ratchetSwitch = Helper.FindFsmOnGameObject(ratchet, "Switch").FsmVariables.FindFsmBool("Switch");
+                    ratchetSwitch = Helper.FindFsmOnGameObject(ratchet, "Switch").FsmVariables.FindFsmBool("Switch");
+                    FsmHook.FsmInject(selectedItem, "Hand", new Action(delegate () { isToolInHand = false; }));
+                    FsmHook.FsmInject(selectedItem, "Tools", new Action(delegate () { isToolInHand = true; }));
+                    initAlreadyRun = true;
+                }
+                catch
+                {
+                    initAlreadyRun = false;
+                }
 
-            FsmHook.FsmInject(selectedItem, "Hand", new Action(delegate () { isToolInHand = false; }));
-            FsmHook.FsmInject(selectedItem, "Tools", new Action(delegate () { isToolInHand = true; }));
+            }
 
             _boltingSpeed = PlayMakerGlobals.Instance.Variables.GetFsmFloat("BoltingSpeed");
             _wrenchSize = PlayMakerGlobals.Instance.Variables.GetFsmFloat("ToolWrenchSize");
         }
 
+        /// <summary>
+        /// Initializes the logic by passing information required by the logic
+        /// </summary>
+        /// <param name="baseInfo">The pre loaded base info</param>
+        /// <param name="parent">The parent (equal to this.gameobject in this case)</param>
+        /// <param name="screws">The array of screws this logic is responsible for</param>
+        /// <param name="screwablePart">The ScrewablePartV2 object that created this logic object</param>
         internal void Init(ScrewableBaseInfo baseInfo, GameObject parent, ScrewV2[] screws, ScrewablePartV2 screwablePart)
         {
             screwMaterial = baseInfo.material;
@@ -64,7 +99,9 @@ namespace ScrewablePartAPI.V2
         }
 
 
-        // Update is called once per frame
+        /// <summary>
+        /// Called every frame and detects the screws
+        /// </summary>
         void Update()
         {
             if(!isToolInHand || (!spanner.activeSelf && !ratchet.activeSelf)) { return; }
@@ -76,7 +113,7 @@ namespace ScrewablePartAPI.V2
 
                 try
                 {
-                    if ((bool)ScrewablePart.showScrewSize.Value)
+                    if ((bool)ScrewablePartV2.showScrewSize.Value)
                     {
                         ScrewablePart.GuiInteraction = "Screw size: " + screw.size;
                     }
@@ -137,11 +174,13 @@ namespace ScrewablePartAPI.V2
                         parentCollider.enabled = true;
                     }
                 }
-
-
             }
         }
 
+        /// <summary>
+        /// This detects the screw the user is aiming at
+        /// </summary>
+        /// <returns>Either a ScrewV2 object or null if nothing is found</returns>
         private ScrewV2 DetectScrew()
         {
             if (previousScrew != null)
@@ -149,7 +188,7 @@ namespace ScrewablePartAPI.V2
                 previousScrew.renderer.material = screwMaterial;
                 previousScrew = null;
             }
-            if (!isToolInHand || Camera.main == null) { return null; }
+            if (Camera.main == null) { return null; }
             RaycastHit hit;
             GameObject hitObject;
             if (!Physics.Raycast(Camera.main.ScreenPointToRay(Input.mousePosition), out hit, 1f, 1 << LayerMask.NameToLayer("DontCollide"))) { return null; }

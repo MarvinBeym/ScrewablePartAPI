@@ -2,26 +2,58 @@
 using ScrewablePartAPI.New;
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using UnityEngine;
-using static ScrewablePartAPI.NewScrewablePart;
-#pragma warning disable CS1591 // Fehledes XML-Kommentar für öffentlich sichtbaren Typ oder Element
 namespace ScrewablePartAPI.V2
 {
+    /// <summary>
+    /// This is a "helper" class that defines base information needed everytime you create a screwable part
+    /// This greatly reduces the amount of parameters required for each screwable part
+    /// It also auto loads the models from the AssetBundle and does it only once compared to V1
+    /// </summary>
     public class ScrewableBaseInfo
     {
+        /// <summary>
+        /// The screwablePart assetBundle
+        /// </summary>
         public AssetBundle assetBundle;
+        /// <summary>
+        /// The Dictionary containing all the saved tightness
+        /// </summary>
         public Dictionary<string, int[]> save;
+        /// <summary>
+        /// The material of the screw used to reset when the screw is no longer highlighted. (auto loaded)
+        /// </summary>
         public Material material;
+        /// <summary>
+        /// The AudioClip played when screwing in/out a screw (auto loaded)
+        /// </summary>
         public AudioClip soundClip;
+        /// <summary>
+        /// The optional clamp model you can add to a gameobject to get a basic clamp usefull when connecting pipes (auto loaded)
+        /// </summary>
         public GameObject clampModel;
-
+        /// <summary>
+        /// The nut model (auto loaded)
+        /// </summary>
         public GameObject nutModel;
+        /// <summary>
+        /// The first screw model (auto loaded)
+        /// </summary>
         public GameObject screw1Model;
+        /// <summary>
+        /// The second screw model (auto loaded)
+        /// </summary>
         public GameObject screw2Model;
+        /// <summary>
+        /// The third screw model (auto loaded)
+        /// </summary>
         public GameObject screw3Model;
 
+        /// <summary>
+        /// The object constructor
+        /// </summary>
+        /// <param name="assetBundle">AssetBundle of the screwable part api</param>
+        /// <param name="save">The loaded dictionary of save information</param>
         public ScrewableBaseInfo(AssetBundle assetBundle, Dictionary<string, int[]> save)
         {
             this.assetBundle = assetBundle;
@@ -35,22 +67,34 @@ namespace ScrewablePartAPI.V2
             screw2Model = assetBundle.LoadAsset<GameObject>("screwable_screw2.prefab");
             screw3Model = assetBundle.LoadAsset<GameObject>("screwable_screw3.prefab");
         }
-
     }
+
+    /// <summary>
+    /// The main class that handles everything
+    /// </summary>
     public class ScrewablePartV2
     {
+        /// <summary>
+        /// The version of the api
+        /// </summary>
+        public static string version = "2.0.0";
+
         private string id;
         private ScrewableBaseInfo baseInfo;
         private int clampsAdded = 0;
         private float rotationStep;
         private float transformStep;
-        public int maxTightness;
+        internal int maxTightness;
 
         private GameObject parent;
         private ScrewV2[] screws;
         private ScrewablePartLogicV2 logic;
 
-        private static Settings showScrewSize = new Settings("showScrewSize", "Show screw size", false);
+        internal static Settings showScrewSize = new Settings("showScrewSize", "Show screw size (tool in hand required)", false);
+        
+        /// <summary>
+        /// Returns if the part is fixed (all screws have reached the maximum tightness)
+        /// </summary>
         public bool partFixed
         {
             get
@@ -59,12 +103,25 @@ namespace ScrewablePartAPI.V2
             }
         }
 
+        /// <summary>
+        /// This can be placed in your ModSettings() function of your mod
+        /// This will add a header and checkbox.
+        /// The checkbox will allow showing of screw sizes if user aims at a screw with a tool in hand
+        /// </summary>
+        /// <param name="mod"></param>
         public static void SetupModSettings(Mod mod)
         {
             Settings.AddHeader(mod, "ScrewablePartAPI");
             Settings.AddCheckBox(mod, showScrewSize);
         }
 
+        /// <summary>
+        /// The object constructor
+        /// </summary>
+        /// <param name="baseInfo">The pre created ScrewableBaseInfo object</param>
+        /// <param name="id">The id used for loading of the save. It is recommended to use the parent.name for this</param>
+        /// <param name="parent">The parent gameobject the screws will be added to as childs</param>
+        /// <param name="screws">An array of all defined screws</param>
         public ScrewablePartV2(ScrewableBaseInfo baseInfo, string id, GameObject parent, ScrewV2[] screws)
         {
             maxTightness = 8;
@@ -80,12 +137,28 @@ namespace ScrewablePartAPI.V2
             InitScrewable(baseInfo, id, parent, screws);
         }
 
-
+        /// <summary>
+        /// This has to be called when your parts get assembled
+        /// It's up to you to call this.
+        /// I recommend using ModApi and somehow adding this to your overriden assemble function
+        /// </summary>
         public void OnPartAssemble()
         {
-
+            foreach (ScrewV2 screw in screws)
+            {
+                screw.tightness = 0;
+                screw.gameObject.transform.localPosition = Helper.CopyVector3(screw.position);
+                screw.gameObject.transform.localRotation = new Quaternion { eulerAngles = Helper.CopyVector3(screw.rotation) };
+            }
+            logic.partFixed = false;
+            logic.parentCollider.enabled = true;
         }
 
+        /// <summary>
+        /// This has to be called when your parts get disassembled
+        /// It's up to you to call this.
+        /// I recommend using ModApi and somehow adding this to your overriden disassemble function
+        /// </summary>
         public void OnPartDisassemble()
         {
             foreach(ScrewV2 screw in screws)
@@ -95,8 +168,15 @@ namespace ScrewablePartAPI.V2
                 screw.gameObject.transform.localRotation = new Quaternion { eulerAngles = Helper.CopyVector3(screw.rotation) };
             }
             logic.partFixed = false;
+            logic.parentCollider.enabled = true;
         }
 
+        /// <summary>
+        /// This function adds a simple clamp model to the parent calling it {parent name}_CLAMP{clampIndex}
+        /// </summary>
+        /// <param name="position">The position on the parent to place this clamp</param>
+        /// <param name="rotation">The rotation on the parent to place this clamp</param>
+        /// <param name="scale">The scale of the model of the clamp</param>
         public void AddClampModel(Vector3 position, Vector3 rotation, Vector3 scale)
         {
             GameObject clamp = GameObject.Instantiate(baseInfo.clampModel);
@@ -108,6 +188,13 @@ namespace ScrewablePartAPI.V2
             clamp.transform.localRotation = new Quaternion { eulerAngles = rotation };
         }
 
+        /// <summary>
+        /// Loads the tightness and incase something goes wrong on loading 
+        /// (like difference between defined screws and loaded screws will reset the values)
+        /// </summary>
+        /// <param name="save">The loaded dictionary of save information</param>
+        /// <param name="id">The id of the screw</param>
+        /// <param name="screws">An array of all the screws</param>
         private void LoadTightness(Dictionary<string, int[]> save, string id, ScrewV2[] screws)
         {
             int[] loadedTightness;
@@ -132,6 +219,13 @@ namespace ScrewablePartAPI.V2
             }
         }
 
+        /// <summary>
+        /// Initializes the screwable part
+        /// </summary>
+        /// <param name="baseInfo">The pre loaded base info</param>
+        /// <param name="id">The id for the screw</param>
+        /// <param name="parent">The parent where the screws are supposed to be placed on</param>
+        /// <param name="screws">The array of screws to initialize</param>
         private void InitScrewable(ScrewableBaseInfo baseInfo, string id, GameObject parent, ScrewV2[] screws)
         {
             for(int i = 0; i < screws.Length; i++)
@@ -139,10 +233,7 @@ namespace ScrewablePartAPI.V2
                 ScrewV2 screw = screws[i];
                 screw.id = String.Format("{0}_SCREW{1}", parent.name, i + 1);
                 screw.gameObject = CreateScrewModel(screw.id, screw.position, screw.rotation, new Vector3(screw.scale, screw.scale, screw.scale), screw.type);
-                screw.screwInfo = screw.gameObject.AddComponent<ScrewInfo>();
-                screw.screwInfo.tightness = screw.tightness;
-                screw.screwInfo.size = screw.size;
-                screw.renderer = screw.gameObject.GetComponentInChildren<MeshRenderer>();
+                screw.renderer = screw.gameObject.GetComponentsInChildren<MeshRenderer>(true)[0];
                 int tmpTigness = screw.tightness;
                 screw.tightness = 0;
                 for(int j = 0; j < tmpTigness; j++)
@@ -154,6 +245,11 @@ namespace ScrewablePartAPI.V2
             logic.Init(baseInfo, parent, screws, this);
         }
 
+        /// <summary>
+        /// Screw in the passed screw by one tightness
+        /// </summary>
+        /// <param name="screw">The screw to screw in once</param>
+        /// <param name="useAudio">Should audio be played</param>
         internal void ScrewIn(ScrewV2 screw, bool useAudio = true)
         {
             if (screw.tightness < maxTightness)
@@ -170,23 +266,11 @@ namespace ScrewablePartAPI.V2
             }
         }
 
-        public static void SaveScrews(Mod mod, ScrewablePartV2[] screwableParts, string saveFile)
-        {
-            Dictionary<string, int[]> saveDictionary = new Dictionary<string, int[]>();
-            foreach(ScrewablePartV2 screwablePart in screwableParts)
-            {
-                int[] tightnessArr = new int[screwablePart.screws.Length];
-                for(int i = 0; i < screwablePart.screws.Length; i++)
-                {
-                    ScrewV2 screw = screwablePart.screws[i];
-                    tightnessArr[i] = screw.tightness;
-                }
-                saveDictionary[screwablePart.id] = tightnessArr;
-            }
-
-            SaveLoad.SerializeSaveFile<Dictionary<string, int[]>>(mod, saveDictionary, saveFile);
-        }
-
+        /// <summary>
+        /// Screw out the passed screw by one tightness
+        /// </summary>
+        /// <param name="screw">The screw to screw out once</param>
+        /// <param name="useAudio">Should audio be played</param>
         internal void ScrewOut(ScrewV2 screw, bool useAudio = true)
         {
             if (screw.tightness > 0)
@@ -204,6 +288,39 @@ namespace ScrewablePartAPI.V2
             logic.partFixed = false;
         }
 
+        /// <summary>
+        /// This function saves the screws into the config folder of your mod
+        /// </summary>
+        /// <param name="mod">Your mod object (usually "this")</param>
+        /// <param name="screwableParts">An array of all the screwable parts in your mod you want to save</param>
+        /// <param name="saveFile">The save file name</param>
+        public static void SaveScrews(Mod mod, ScrewablePartV2[] screwableParts, string saveFile)
+        {
+            Dictionary<string, int[]> saveDictionary = new Dictionary<string, int[]>();
+            foreach(ScrewablePartV2 screwablePart in screwableParts)
+            {
+                int[] tightnessArr = new int[screwablePart.screws.Length];
+                for(int i = 0; i < screwablePart.screws.Length; i++)
+                {
+                    ScrewV2 screw = screwablePart.screws[i];
+                    tightnessArr[i] = screw.tightness;
+                }
+                saveDictionary[screwablePart.id] = tightnessArr;
+            }
+
+            SaveLoad.SerializeSaveFile<Dictionary<string, int[]>>(mod, saveDictionary, saveFile);
+        }
+
+
+        /// <summary>
+        /// Creates the screws model based on the passed screw type
+        /// </summary>
+        /// <param name="name">The name of the screw under which it can be found in the game</param>
+        /// <param name="position">The local position on the parent object</param>
+        /// <param name="rotation">The local rotation on the parent object</param>
+        /// <param name="scale">The local scale on the parent object</param>
+        /// <param name="screwType">The type this screw should be</param>
+        /// <returns></returns>
         private GameObject CreateScrewModel(string name, Vector3 position, Vector3 rotation, Vector3 scale, ScrewV2.Type screwType)
         {
             GameObject screw;
@@ -235,4 +352,3 @@ namespace ScrewablePartAPI.V2
         }
     }
 }
-#pragma warning restore CS1591 // Fehledes XML-Kommentar für öffentlich sichtbaren Typ oder Element

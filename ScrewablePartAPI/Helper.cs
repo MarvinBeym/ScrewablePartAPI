@@ -5,7 +5,10 @@ using System.Text;
 using UnityEngine;
 namespace ScrewablePartAPI.New
 {
-    public class Helper
+    /// <summary>
+    /// A class containing helper functions
+    /// </summary>
+    internal class Helper
     {
         internal static PlayMakerFSM FindFsmOnGameObject(GameObject gameObject, string fsmName)
         {
