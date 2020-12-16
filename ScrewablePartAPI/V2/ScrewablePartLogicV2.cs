@@ -87,10 +87,10 @@ namespace ScrewablePartAPI.V2
         /// <param name="parent">The parent (equal to this.gameobject in this case)</param>
         /// <param name="screws">The array of screws this logic is responsible for</param>
         /// <param name="screwablePart">The ScrewablePartV2 object that created this logic object</param>
-        internal void Init(ScrewableBaseInfo baseInfo, GameObject parent, ScrewV2[] screws, ScrewablePartV2 screwablePart)
+        internal void Init(GameObject parent, ScrewV2[] screws, ScrewablePartV2 screwablePart)
         {
-            screwMaterial = baseInfo.material;
-            screwSound = baseInfo.soundClip;
+            screwMaterial = ScrewablePartV2Mod.material;
+            screwSound = ScrewablePartV2Mod.soundClip;
             this.parent = parent;
             this.screws = screws;
             this.screwablePart = screwablePart;

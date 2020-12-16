@@ -1,5 +1,8 @@
-﻿using System;
+﻿using MSCLoader;
+using Newtonsoft.Json;
+using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using UnityEngine;
@@ -10,6 +13,33 @@ namespace ScrewablePartAPI
     /// </summary>
     internal class Helper
     {
+        internal static T LoadSaveOrReturnNew<T>(string saveFilePath) where T : new()
+        {
+            if (File.Exists(saveFilePath))
+            {
+                string serializedData = File.ReadAllText(saveFilePath);
+                return JsonConvert.DeserializeObject<T>(serializedData);
+            }
+            return new T();
+        }
+        internal static AssetBundle LoadAssetBundle(Mod mod, string fileName)
+        {
+            try
+            {
+                return LoadAssets.LoadBundle(mod, fileName);
+            }
+            catch (Exception ex)
+            {
+                string message = String.Format("AssetBundle file '{0}' could not be loaded", fileName);
+                ModConsole.Error(message);
+                ModUI.ShowYesNoMessage(message + "\n\nClose Game? - RECOMMENDED", delegate ()
+                {
+                    Application.Quit();
+                });
+            }
+            return null;
+        }
+
         internal static PlayMakerFSM FindFsmOnGameObject(GameObject gameObject, string fsmName)
         {
             foreach (PlayMakerFSM fSM in gameObject.GetComponents<PlayMakerFSM>())

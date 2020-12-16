@@ -1,73 +1,12 @@
 ﻿using MSCLoader;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
+using System.IO;
+using System.Net;
 using UnityEngine;
 namespace ScrewablePartAPI.V2
 {
-    /// <summary>
-    /// This is a "helper" class that defines base information needed everytime you create a screwable part
-    /// This greatly reduces the amount of parameters required for each screwable part
-    /// It also auto loads the models from the AssetBundle and does it only once compared to V1
-    /// </summary>
-    public class ScrewableBaseInfo
-    {
-        /// <summary>
-        /// The screwablePart assetBundle
-        /// </summary>
-        public AssetBundle assetBundle;
-        /// <summary>
-        /// The Dictionary containing all the saved tightness
-        /// </summary>
-        public Dictionary<string, int[]> save;
-        /// <summary>
-        /// The material of the screw used to reset when the screw is no longer highlighted. (auto loaded)
-        /// </summary>
-        public Material material;
-        /// <summary>
-        /// The AudioClip played when screwing in/out a screw (auto loaded)
-        /// </summary>
-        public AudioClip soundClip;
-        /// <summary>
-        /// The optional clamp model you can add to a gameobject to get a basic clamp usefull when connecting pipes (auto loaded)
-        /// </summary>
-        public GameObject clampModel;
-        /// <summary>
-        /// The nut model (auto loaded)
-        /// </summary>
-        public GameObject nutModel;
-        /// <summary>
-        /// The first screw model (auto loaded)
-        /// </summary>
-        public GameObject screw1Model;
-        /// <summary>
-        /// The second screw model (auto loaded)
-        /// </summary>
-        public GameObject screw2Model;
-        /// <summary>
-        /// The third screw model (auto loaded)
-        /// </summary>
-        public GameObject screw3Model;
-
-        /// <summary>
-        /// The object constructor
-        /// </summary>
-        /// <param name="assetBundle">AssetBundle of the screwable part api</param>
-        /// <param name="save">The loaded dictionary of save information</param>
-        public ScrewableBaseInfo(AssetBundle assetBundle, Dictionary<string, int[]> save)
-        {
-            this.assetBundle = assetBundle;
-            this.save = save;
-            material = assetBundle.LoadAsset<Material>("Screw-Material.mat");
-            soundClip = assetBundle.LoadAsset<AudioClip>("screwable_sound.wav");
-            clampModel = assetBundle.LoadAsset<GameObject>("Tube_Clamp.prefab");
-
-            nutModel = assetBundle.LoadAsset<GameObject>("screwable_nut.prefab");
-            screw1Model = assetBundle.LoadAsset<GameObject>("screwable_screw1.prefab");
-            screw2Model = assetBundle.LoadAsset<GameObject>("screwable_screw2.prefab");
-            screw3Model = assetBundle.LoadAsset<GameObject>("screwable_screw3.prefab");
-        }
-    }
-
     /// <summary>
     /// The main class that handles everything
     /// </summary>
@@ -76,10 +15,9 @@ namespace ScrewablePartAPI.V2
         /// <summary>
         /// The version of the api
         /// </summary>
-        public static string version = "2.0.0";
+        public static string version = "";
 
         private string id;
-        private ScrewableBaseInfo baseInfo;
         private int clampsAdded = 0;
         private float rotationStep;
         private float transformStep;
@@ -88,6 +26,9 @@ namespace ScrewablePartAPI.V2
         private GameObject parent;
         private ScrewV2[] screws;
         private ScrewablePartLogicV2 logic;
+        private string saveFilePath;
+
+        private Dictionary<string, int[]> save;
 
         internal static Settings showScrewSize = new Settings("showScrewSize", "Show screw size (tool in hand required)", false);
         
@@ -117,23 +58,25 @@ namespace ScrewablePartAPI.V2
         /// <summary>
         /// The object constructor
         /// </summary>
-        /// <param name="baseInfo">The pre created ScrewableBaseInfo object</param>
+        /// <param name="saveFilePath">The path to your mods screw save file</param>
         /// <param name="id">The id used for loading of the save. It is recommended to use the parent.name for this</param>
         /// <param name="parent">The parent gameobject the screws will be added to as childs</param>
         /// <param name="screws">An array of all defined screws</param>
-        public ScrewablePartV2(ScrewableBaseInfo baseInfo, string id, GameObject parent, ScrewV2[] screws)
+        public ScrewablePartV2(string saveFilePath, string id, GameObject parent, ScrewV2[] screws)
         {
+            this.saveFilePath = saveFilePath;
+            save = Helper.LoadSaveOrReturnNew<Dictionary<string, int[]>>(saveFilePath);
+
             maxTightness = 8;
             rotationStep = 360 / maxTightness;
             transformStep = 0.0008f;
-            this.baseInfo = baseInfo;
             this.id = id;
             this.parent = parent;
             this.screws = screws;
 
-            LoadTightness(baseInfo.save, id, screws);
+            LoadTightness(save, id, screws);
 
-            InitScrewable(baseInfo, id, parent, screws);
+            InitScrewable(id, parent, screws);
         }
 
         /// <summary>
@@ -178,7 +121,7 @@ namespace ScrewablePartAPI.V2
         /// <param name="scale">The scale of the model of the clamp</param>
         public void AddClampModel(Vector3 position, Vector3 rotation, Vector3 scale)
         {
-            GameObject clamp = GameObject.Instantiate(baseInfo.clampModel);
+            GameObject clamp = GameObject.Instantiate(ScrewablePartV2Mod.clampModel);
             clamp.name = parent.name + "_CLAMP" + (clampsAdded + 1);
             clampsAdded++;
             clamp.transform.SetParent(parent.transform);
@@ -225,7 +168,7 @@ namespace ScrewablePartAPI.V2
         /// <param name="id">The id for the screw</param>
         /// <param name="parent">The parent where the screws are supposed to be placed on</param>
         /// <param name="screws">The array of screws to initialize</param>
-        private void InitScrewable(ScrewableBaseInfo baseInfo, string id, GameObject parent, ScrewV2[] screws)
+        private void InitScrewable(string id, GameObject parent, ScrewV2[] screws)
         {
             for(int i = 0; i < screws.Length; i++)
             {
@@ -241,7 +184,7 @@ namespace ScrewablePartAPI.V2
                 }
             }
             logic = parent.AddComponent<ScrewablePartLogicV2>();
-            logic.Init(baseInfo, parent, screws, this);
+            logic.Init(parent, screws, this);
         }
 
         /// <summary>
@@ -255,7 +198,7 @@ namespace ScrewablePartAPI.V2
             {
                 if (useAudio)
                 {
-                    AudioSource.PlayClipAtPoint(baseInfo.soundClip, screw.gameObject.transform.position);
+                    AudioSource.PlayClipAtPoint(ScrewablePartV2Mod.soundClip, screw.gameObject.transform.position);
                 }
                 screw.gameObject.transform.Rotate(0, 0, rotationStep);
                 screw.gameObject.transform.Translate(0f, 0f, -transformStep);
@@ -276,7 +219,7 @@ namespace ScrewablePartAPI.V2
             {
                 if (useAudio)
                 {
-                    AudioSource.PlayClipAtPoint(baseInfo.soundClip, screw.gameObject.transform.position);
+                    AudioSource.PlayClipAtPoint(ScrewablePartV2Mod.soundClip, screw.gameObject.transform.position);
                 }
 
                 screw.gameObject.transform.Rotate(0, 0, -rotationStep);
@@ -326,19 +269,19 @@ namespace ScrewablePartAPI.V2
             switch (screwType)
             {
                 case ScrewV2.Type.Nut:
-                    screw = GameObject.Instantiate(baseInfo.nutModel);
+                    screw = GameObject.Instantiate(ScrewablePartV2Mod.nutModel);
                     break;
                 case ScrewV2.Type.Screw1:
-                    screw = GameObject.Instantiate(baseInfo.screw1Model);
+                    screw = GameObject.Instantiate(ScrewablePartV2Mod.screw1Model);
                     break;
                 case ScrewV2.Type.Screw2:
-                    screw = GameObject.Instantiate(baseInfo.screw2Model);
+                    screw = GameObject.Instantiate(ScrewablePartV2Mod.screw2Model);
                     break;
                 case ScrewV2.Type.Screw3:
-                    screw = GameObject.Instantiate(baseInfo.screw3Model);
+                    screw = GameObject.Instantiate(ScrewablePartV2Mod.screw3Model);
                     break;
                 default:
-                    screw = GameObject.Instantiate(baseInfo.screw2Model);
+                    screw = GameObject.Instantiate(ScrewablePartV2Mod.screw2Model);
                     break;
             }
             screw = Helper.SetObjectNameTagLayer(screw, name, "DontCollide");
