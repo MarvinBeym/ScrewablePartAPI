@@ -23,6 +23,11 @@ namespace ScrewablePartAPI.V2
             public string message { get; set; } = "";
             public string available { get; set; } = "";
         }
+        private class LastXReleasesRespons
+        {
+            public string message { get; set; } = "";
+            public List<string> data { get; set; }
+        }
 
         public override string ID => "ScrewablePartAPI";
         public override string Name => "ScrewablePartAPI";
@@ -69,11 +74,16 @@ namespace ScrewablePartAPI.V2
         {
             return $"http://localhost/web/msc/screwablepartapi/public/versions/{version}.zip";
         }
+        private string getLastXReleasesUrl(int nReleases)
+        {
+            return $"http://localhost/web/msc/screwablepartapi/public/getLatestVersions.php?lastVersions={nReleases}";
+        }
 
         public override void OnMenuLoad()
         {
-            ScrewablePartV2.version = this.Version;
             
+            ScrewablePartV2.version = this.Version;
+
             int errorsDetected = 0;
             modsFolderFilePath = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
             dllFilePath = Path.Combine(modsFolderFilePath, $"{ID}.dll");
@@ -84,7 +94,7 @@ namespace ScrewablePartAPI.V2
             old_xmlFilePath = xmlFilePath.Replace(".xml", ".old_xml");
             old_assetsBundleFilePath = assetsBundleFilePath.Replace(".unity3d", ".old_unity3d");
 
-            ExecuteSettingsWorkaround();
+            LoadSettingsSave();
 
             CheckForOldFiles();
             try
@@ -116,7 +126,6 @@ namespace ScrewablePartAPI.V2
                             $"This can break mods using outdated versions", "ScrewablePartAPI is outdated", UpdateMessageNoClicked, UpdateMessageYesClicked);
                         break;
                 }
-
             }
 
 
@@ -268,14 +277,13 @@ namespace ScrewablePartAPI.V2
             }
         }
 
-        private void ExecuteSettingsWorkaround()
+        private void LoadSettingsSave()
         {
             string modSettingsFile = Helper.CombinePaths(modsFolderFilePath, "Config", "Mod Settings", ID, "settings.json");
             if (File.Exists(modSettingsFile))
             { 
-                SettingsList list = new SettingsList();
                 string jsonContent = File.ReadAllText(modSettingsFile);
-                list = JsonConvert.DeserializeObject<SettingsList>(jsonContent);
+                SettingsList list = JsonConvert.DeserializeObject<SettingsList>(jsonContent);
                 showBoltSizeSetting.Value = list.settings[0].Value;
                 ignoreUpdatesSetting.Value = list.settings[1].Value;
             }
@@ -285,8 +293,33 @@ namespace ScrewablePartAPI.V2
 
         public override void ModSettings()
         {
+            string responseJson = Helper.MakeGetRequest(getLastXReleasesUrl(5));
+            List<string> lastXVersions = JsonConvert.DeserializeObject<LastXReleasesRespons>(responseJson).data;
             Settings.AddCheckBox(this, showBoltSizeSetting);
             Settings.AddCheckBox(this, ignoreUpdatesSetting);
+            Settings.AddHeader(this, "Change version");
+            Settings.AddText(this, 
+                "This will also disable the auto updater!\n" +
+                "The checkbox will only update when closing the settings window!");
+            foreach(string version in lastXVersions)
+            {
+                string versionString = version.Replace(".", "_");
+                Settings tmpSetting = new Settings($"changeVersion{versionString}", "Install version", new Action(delegate ()
+                {
+                    InstallVersion(versionString, true);
+                }));
+                Settings.AddButton(this, tmpSetting, version);
+            }
+        }
+
+        private void InstallVersion(string versionString, bool disableAutoUpdater = false)
+        {
+            if (disableAutoUpdater)
+            {
+                ignoreUpdatesSetting.Value = true;
+            }
+            
+            ModConsole.Print(versionString);
         }
 
 
