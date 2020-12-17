@@ -47,10 +47,36 @@ namespace ScrewablePartAPI.V2
         private GameObject interfaceActive;
         private GameObject quad7;
         private UpdateCheckResponse updateCheckResponse;
+        private string modsFolderFilePath;
 
+        //Current & new file paths
+        private string dllFilePath;
+        private string xmlFilePath;
+        private string assetsBundleFilePath;
+
+        //Old file paths
+        private string old_dllFilePath;
+        private string old_xmlFilePath;
+        private string old_assetsBundleFilePath;
+
+        
+        private string getUpdateUrl(string version)
+        {
+            return $"http://localhost/web/msc/screwablepartapi/public/versions/{version}.zip";
+        }
         public override void OnMenuLoad()
         {
             ScrewablePartV2.version = this.Version;
+            int errorsDetected = 0;
+            modsFolderFilePath = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+            dllFilePath = Path.Combine(modsFolderFilePath, $"{ID}.dll");
+            xmlFilePath = Path.Combine(modsFolderFilePath, $"{ID}.xml");
+            assetsBundleFilePath = Path.Combine(ModLoader.GetModAssetsFolder(this), assetsFile);
+
+            old_dllFilePath = dllFilePath.Replace(".dll", ".old_dll");
+            old_xmlFilePath = xmlFilePath.Replace(".xml", ".old_xml");
+            old_assetsBundleFilePath = assetsBundleFilePath.Replace(".unity3d", ".old_unity3d");
+            CheckForOldFiles();
             try
             {
                 interfaceObject = GameObject.Find("Interface");
@@ -59,8 +85,8 @@ namespace ScrewablePartAPI.V2
             }
             catch{}
 
-            CheckForOldFiles();
-
+            
+            //Temp
             updateCheckResponse = new UpdateCheckResponse
             {
                 message = "out-dated",
@@ -72,24 +98,28 @@ namespace ScrewablePartAPI.V2
                 case "out-dated":
                     ModConsole.Warning($"ScrewablePartAPI outdated. version {updateCheckResponse.available} available");
                     SetMenuVisibility(false);
-                    ShowYesNoMessage($"ScrewablePartAPI is outdated\n" +
+                    Helper.ShowCustom2ButtonMessage($"ScrewablePartAPI is outdated\n" +
                         $"version {updateCheckResponse.available} is available on GitHub\n" +
                         $"Do you want to update automatically?\n" +
                         $"(Restart will be required)\n" +
-                        $"This can break mods using outdated versions", "ScrewablePartAPI is outdated", UpdateMessageYesClicked, UpdateMessageNoClicked);
+                        $"This can break mods using outdated versions", "ScrewablePartAPI is outdated", UpdateMessageNoClicked, UpdateMessageYesClicked);
                     break;
             }
 
-            assetBundle = Helper.LoadAssetBundle(this, assetsFile);
-            material = assetBundle.LoadAsset<Material>("Screw-Material.mat");
-            soundClip = assetBundle.LoadAsset<AudioClip>("screwable_sound.wav");
-            clampModel = assetBundle.LoadAsset<GameObject>("Tube_Clamp.prefab");
+            if(errorsDetected == 0)
+            {
+                assetBundle = Helper.LoadAssetBundle(this, assetsFile);
+                material = assetBundle.LoadAsset<Material>("Screw-Material.mat");
+                soundClip = assetBundle.LoadAsset<AudioClip>("screwable_sound.wav");
+                clampModel = assetBundle.LoadAsset<GameObject>("Tube_Clamp.prefab");
 
-            nutModel = assetBundle.LoadAsset<GameObject>("screwable_nut.prefab");
-            screw1Model = assetBundle.LoadAsset<GameObject>("screwable_screw1.prefab");
-            screw2Model = assetBundle.LoadAsset<GameObject>("screwable_screw2.prefab");
-            screw3Model = assetBundle.LoadAsset<GameObject>("screwable_screw3.prefab");
-            assetBundle.Unload(false);
+                nutModel = assetBundle.LoadAsset<GameObject>("screwable_nut.prefab");
+                screw1Model = assetBundle.LoadAsset<GameObject>("screwable_screw1.prefab");
+                screw2Model = assetBundle.LoadAsset<GameObject>("screwable_screw2.prefab");
+                screw3Model = assetBundle.LoadAsset<GameObject>("screwable_screw3.prefab");
+                assetBundle.Unload(false);
+            }
+
         }
 
         private void SetMenuVisibility(bool state)
@@ -106,31 +136,32 @@ namespace ScrewablePartAPI.V2
 
         private void CheckForOldFiles()
         {
-            string oldDllFile = Assembly.GetExecutingAssembly().Location;
-            string oldXmlFile = Assembly.GetExecutingAssembly().Location;
-            oldXmlFile = oldXmlFile.Replace(".dll", ".xml");
-            string oldAssetsFile = Path.Combine(ModLoader.GetModAssetsFolder(this), assetsFile);
+            int filesDeletedCounter = 0;
+            if (File.Exists(old_dllFilePath)) { filesDeletedCounter++; File.Delete(old_dllFilePath); }
+            if (File.Exists(old_xmlFilePath)) { filesDeletedCounter++; File.Delete(old_xmlFilePath); }
+            if (File.Exists(old_assetsBundleFilePath)) { filesDeletedCounter++; File.Delete(old_assetsBundleFilePath); }
 
-            oldDllFile = oldDllFile.Replace($"{ID}.dll", $"{ID}.old_dll");
-            oldAssetsFile = oldAssetsFile.Replace(assetsFile, "screwableapi.old_unity3d");
-            oldXmlFile = oldXmlFile.Replace($"{ID}.xml", $"{ID}.old_xml");
+            if(filesDeletedCounter > 0)
+            {
+                ModUI.ShowMessage(
+                    $"Old api files have been deleted\n" +
+                    $"{filesDeletedCounter} of {3} have been deleted\n" +
+                    $"If you did an update before it is now finished", "ScrewablePartAPI Updater");
+            }
 
-            if (File.Exists(oldDllFile)) { File.Delete(oldDllFile); }
-            if (File.Exists(oldAssetsFile)) { File.Delete(oldAssetsFile); }
-            if (File.Exists(oldXmlFile)) { File.Delete(oldXmlFile); }
         }
 
         private void UpdateMessageYesClicked()
         {
+            string newVersionString = updateCheckResponse.available.Replace(".", "_");
+            string downloadFilePath = Path.Combine(modsFolderFilePath, $"{ID}_{newVersionString}_update.zip");
+
             string oldDllFile = Assembly.GetExecutingAssembly().Location;
             string oldXmlFile = Assembly.GetExecutingAssembly().Location;
             oldXmlFile = oldXmlFile.Replace(".dll", ".xml");
             string oldAssetsFile = Path.Combine(ModLoader.GetModAssetsFolder(this), assetsFile);
-
-            string newVersion = updateCheckResponse.available.Replace(".", "_");
-            string updateFileUrl = $"http://localhost/web/msc/screwablepartapi/public/versions/{newVersion}.zip";
-
-            string downloadFilePath = Path.Combine(Path.GetDirectoryName(oldDllFile), $"{ID}_{newVersion}_update.zip");
+            
+            
 
             string newDllFile = oldDllFile;
             string newAssetsFile = oldAssetsFile;
@@ -148,7 +179,7 @@ namespace ScrewablePartAPI.V2
             {
                 using (var client = new WebClient())
                 {
-                    client.DownloadFile(updateFileUrl, downloadFilePath);
+                    client.DownloadFile(getUpdateUrl(newVersionString), downloadFilePath);
                 }
             }
             try
