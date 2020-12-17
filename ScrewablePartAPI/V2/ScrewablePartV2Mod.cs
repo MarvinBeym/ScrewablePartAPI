@@ -1,6 +1,7 @@
 ﻿using Ionic.Zip;
 using MSCLoader;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -30,6 +31,10 @@ namespace ScrewablePartAPI.V2
         public override string Author => "DonnerPlays";
         public override bool UseAssetsFolder => true;
         public override bool LoadInMenu => true;
+
+        private static Settings showBoltSizeSetting = new Settings("showBoltSizeSetting", "Show screw size", false);
+        private Settings ignoreUpdatesSetting = new Settings("ignoreUpdatesSetting", "Ignore api updates", false);
+        public static bool showScrewSize { get { return (bool)showBoltSizeSetting.Value; } }
 
         private const string assetsFile = "screwableapi.unity3d";
 
@@ -64,9 +69,11 @@ namespace ScrewablePartAPI.V2
         {
             return $"http://localhost/web/msc/screwablepartapi/public/versions/{version}.zip";
         }
+
         public override void OnMenuLoad()
         {
             ScrewablePartV2.version = this.Version;
+            
             int errorsDetected = 0;
             modsFolderFilePath = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
             dllFilePath = Path.Combine(modsFolderFilePath, $"{ID}.dll");
@@ -76,6 +83,9 @@ namespace ScrewablePartAPI.V2
             old_dllFilePath = dllFilePath.Replace(".dll", ".old_dll");
             old_xmlFilePath = xmlFilePath.Replace(".xml", ".old_xml");
             old_assetsBundleFilePath = assetsBundleFilePath.Replace(".unity3d", ".old_unity3d");
+
+            ExecuteSettingsWorkaround();
+
             CheckForOldFiles();
             try
             {
@@ -85,26 +95,30 @@ namespace ScrewablePartAPI.V2
             }
             catch{}
 
-            
-            //Temp
-            updateCheckResponse = new UpdateCheckResponse
+            if(!(bool)ignoreUpdatesSetting.Value)
             {
-                message = "out-dated",
-                available = "2.1.0"
-            };
+                //Temp
+                updateCheckResponse = new UpdateCheckResponse
+                {
+                    message = "out-dated",
+                    available = "2.1.0"
+                };
 
-            switch (updateCheckResponse.message)
-            {
-                case "out-dated":
-                    ModConsole.Warning($"ScrewablePartAPI outdated. version {updateCheckResponse.available} available");
-                    SetMenuVisibility(false);
-                    Helper.ShowCustom2ButtonMessage($"ScrewablePartAPI is outdated\n" +
-                        $"version {updateCheckResponse.available} is available on GitHub\n" +
-                        $"Do you want to update automatically?\n" +
-                        $"(Restart will be required)\n" +
-                        $"This can break mods using outdated versions", "ScrewablePartAPI is outdated", UpdateMessageNoClicked, UpdateMessageYesClicked);
-                    break;
+                switch (updateCheckResponse.message)
+                {
+                    case "out-dated":
+                        ModConsole.Warning($"ScrewablePartAPI outdated. version {updateCheckResponse.available} available");
+                        SetMenuVisibility(false);
+                        Helper.ShowCustom2ButtonMessage($"ScrewablePartAPI is outdated\n" +
+                            $"version {updateCheckResponse.available} is available on GitHub\n" +
+                            $"Do you want to update automatically?\n" +
+                            $"(Restart will be required)\n" +
+                            $"This can break mods using outdated versions", "ScrewablePartAPI is outdated", UpdateMessageNoClicked, UpdateMessageYesClicked);
+                        break;
+                }
+
             }
+
 
             if(errorsDetected == 0)
             {
@@ -228,7 +242,7 @@ namespace ScrewablePartAPI.V2
                     ShowYesNoMessage("The game has to be closed and restarted\n" +
                         "Game will close when you click YES\n" +
                         "If you press NO the game won't be playable... !RESTART!\n" +
-                        "After the restart, the old files will be removed", "Update downloaded", ExitGame, ExitGame);
+                        "After the restart, the old files will be removed", "Update downloaded", Helper.ExitGame, Helper.ExitGame);
                 }
 
 
@@ -238,11 +252,6 @@ namespace ScrewablePartAPI.V2
                 ModUI.ShowMessage($"Update failed, please update manually\n ex: {ex.Message}");
             }
             File.Delete(downloadFilePath);
-        }
-
-        private void ExitGame()
-        {
-            Application.Quit();
         }
 
         private void ShowYesNoMessage(string text, string header, Action YesAction, UnityAction NoAction)
@@ -258,6 +267,28 @@ namespace ScrewablePartAPI.V2
                 NoAction.Invoke();
             }
         }
+
+        private void ExecuteSettingsWorkaround()
+        {
+            string modSettingsFile = Helper.CombinePaths(modsFolderFilePath, "Config", "Mod Settings", ID, "settings.json");
+            if (File.Exists(modSettingsFile))
+            { 
+                SettingsList list = new SettingsList();
+                string jsonContent = File.ReadAllText(modSettingsFile);
+                list = JsonConvert.DeserializeObject<SettingsList>(jsonContent);
+                showBoltSizeSetting.Value = list.settings[0].Value;
+                ignoreUpdatesSetting.Value = list.settings[1].Value;
+            }
+            
+
+        }
+
+        public override void ModSettings()
+        {
+            Settings.AddCheckBox(this, showBoltSizeSetting);
+            Settings.AddCheckBox(this, ignoreUpdatesSetting);
+        }
+
 
         private void RenameFile(string currentFile, string newFile)
         {

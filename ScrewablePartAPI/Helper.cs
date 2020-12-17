@@ -16,6 +16,14 @@ namespace ScrewablePartAPI
     /// </summary>
     internal class Helper
     {
+        internal static string CombinePaths(params string[] paths)
+        {
+            if (paths == null)
+            {
+                throw new ArgumentNullException("paths");
+            }
+            return paths.Aggregate(Path.Combine);
+        }
         internal static T LoadSaveOrReturnNew<T>(string saveFilePath) where T : new()
         {
             if (File.Exists(saveFilePath))
@@ -35,13 +43,16 @@ namespace ScrewablePartAPI
             {
                 string message = String.Format("AssetBundle file '{0}' could not be loaded", fileName);
                 ModConsole.Error(message);
-                ModUI.ShowYesNoMessage(message + "\n\nClose Game? - RECOMMENDED", delegate ()
-                {
-                    Application.Quit();
-                });
+                ModUI.ShowYesNoMessage(message + "\n\nClose Game? - RECOMMENDED", ExitGame);
             }
             return null;
         }
+        
+        internal static void ExitGame()
+        {
+            Application.Quit();
+        }
+
         internal static void ShowCustom2ButtonMessage(string text, string header, UnityAction button1Action, Action button2Action, string button1Text = "Cancel", string button2Text = "Ok")
         {
             ModUI.ShowYesNoMessage(text, header, button2Action);
