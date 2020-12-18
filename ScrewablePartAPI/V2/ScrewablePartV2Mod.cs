@@ -56,7 +56,6 @@ namespace ScrewablePartAPI.V2
         private GameObject interfaceObject;
         private GameObject interfaceActive;
         private GameObject quad7;
-        private UpdateCheckResponse updateCheckResponse;
         private string modsFolderFilePath;
 
         //Current & new file paths
@@ -69,8 +68,12 @@ namespace ScrewablePartAPI.V2
         private string old_xmlFilePath;
         private string old_assetsBundleFilePath;
 
-        
-        private string GetUpdateUrl(string version)
+
+        private string GetLatestReleaseVersionUrl(string currentVersion)
+        {
+            return $"http://localhost/web/msc/screwablepartapi/public/checkUpdateAvailable.php?currentVersion={currentVersion}";
+        }
+        private string GetUpdateDownloadUrl(string version)
         {
             return $"http://localhost/web/msc/screwablepartapi/public/versions/{version}.zip";
         }
@@ -112,11 +115,9 @@ namespace ScrewablePartAPI.V2
             if(!(bool)ignoreUpdatesSetting.Value)
             {
                 //Temp
-                updateCheckResponse = new UpdateCheckResponse
-                {
-                    message = "out-dated",
-                    available = "2.2.0"
-                };
+
+                string responseJson = Helper.MakeGetRequest(GetLatestReleaseVersionUrl(Version));
+                UpdateCheckResponse updateCheckResponse = JsonConvert.DeserializeObject<UpdateCheckResponse>(responseJson);
 
                 switch (updateCheckResponse.message)
                 {
@@ -313,7 +314,7 @@ namespace ScrewablePartAPI.V2
             {
                 using (var client = new WebClient())
                 {
-                    client.DownloadFile(GetUpdateUrl(version), GetVersionDownloadPath(version));
+                    client.DownloadFile(GetUpdateDownloadUrl(version), GetVersionDownloadPath(version));
                 }
             }
             catch
