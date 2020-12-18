@@ -73,6 +73,11 @@ namespace ScrewablePartAPI.V2
         public int tightness = 0;
 
         /// <summary>
+        /// This decides if when the user aims at the screw will show the size
+        /// </summary>
+        public bool showSize = false;
+
+        /// <summary>
         /// The ScrewV2 object constructor
         /// </summary>
         /// <param name="position">Position to place it on the parent</param>

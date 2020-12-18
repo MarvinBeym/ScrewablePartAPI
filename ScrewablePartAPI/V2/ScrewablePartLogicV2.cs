@@ -112,7 +112,7 @@ namespace ScrewablePartAPI.V2
 
                 try
                 {
-                    if ((bool)ScrewablePartV2.showScrewSize.Value)
+                    if ((bool)ScrewablePartV2Mod.showScrewSize && screw.showSize)
                     {
                         ScrewablePart.GuiInteraction = "Screw size: " + screw.size;
                     }

@@ -7,6 +7,17 @@ using System.Net;
 using UnityEngine;
 namespace ScrewablePartAPI.V2
 {
+    public class ScrewablePartV2BaseInfo
+    {
+        public string savePath;
+        public bool showScrewSize;
+        public ScrewablePartV2BaseInfo(string savePath, bool showScrewSize)
+        {
+            this.savePath = savePath;
+            this.showScrewSize = showScrewSize;
+        }
+    }
+
     /// <summary>
     /// The main class that handles everything
     /// </summary>
@@ -30,8 +41,6 @@ namespace ScrewablePartAPI.V2
 
         private Dictionary<string, int[]> save;
 
-        internal static Settings showScrewSize = new Settings("showScrewSize", "Show screw size (tool in hand required)", false);
-        
         /// <summary>
         /// Returns if the part is fixed (all screws have reached the maximum tightness)
         /// </summary>
@@ -44,27 +53,16 @@ namespace ScrewablePartAPI.V2
         }
 
         /// <summary>
-        /// This can be placed in your ModSettings() function of your mod
-        /// This will add a header and checkbox.
-        /// The checkbox will allow showing of screw sizes if user aims at a screw with a tool in hand
-        /// </summary>
-        /// <param name="mod"></param>
-        public static void SetupModSettings(Mod mod)
-        {
-            Settings.AddHeader(mod, "ScrewablePartAPI");
-            Settings.AddCheckBox(mod, showScrewSize);
-        }
-
-        /// <summary>
         /// The object constructor
         /// </summary>
         /// <param name="saveFilePath">The path to your mods screw save file</param>
         /// <param name="id">The id used for loading of the save. It is recommended to use the parent.name for this</param>
         /// <param name="parent">The parent gameobject the screws will be added to as childs</param>
         /// <param name="screws">An array of all defined screws</param>
-        public ScrewablePartV2(string saveFilePath, string id, GameObject parent, ScrewV2[] screws)
+        public ScrewablePartV2(ScrewablePartV2BaseInfo baseInfo, string id, GameObject parent, ScrewV2[] screws)
         {
-            this.saveFilePath = saveFilePath;
+            this.saveFilePath = baseInfo.savePath;
+
             save = Helper.LoadSaveOrReturnNew<Dictionary<string, int[]>>(saveFilePath);
 
             maxTightness = 8;
@@ -76,7 +74,7 @@ namespace ScrewablePartAPI.V2
 
             LoadTightness(save, id, screws);
 
-            InitScrewable(id, parent, screws);
+            InitScrewable(id, parent, screws, baseInfo.showScrewSize);
         }
 
         /// <summary>
@@ -168,7 +166,7 @@ namespace ScrewablePartAPI.V2
         /// <param name="id">The id for the screw</param>
         /// <param name="parent">The parent where the screws are supposed to be placed on</param>
         /// <param name="screws">The array of screws to initialize</param>
-        private void InitScrewable(string id, GameObject parent, ScrewV2[] screws)
+        private void InitScrewable(string id, GameObject parent, ScrewV2[] screws, bool showScrewSize)
         {
             for(int i = 0; i < screws.Length; i++)
             {
@@ -178,6 +176,7 @@ namespace ScrewablePartAPI.V2
                 screw.renderer = screw.gameObject.GetComponentsInChildren<MeshRenderer>(true)[0];
                 int tmpTigness = screw.tightness;
                 screw.tightness = 0;
+                screw.showSize = showScrewSize;
                 for(int j = 0; j < tmpTigness; j++)
                 {
                     ScrewIn(screw, false);
