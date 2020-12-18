@@ -69,8 +69,51 @@ namespace ScrewablePartAPI
             Application.Quit();
         }
 
-        internal static void ShowCustom2ButtonMessage(string text, string header, UnityAction button1Action, Action button2Action, string button1Text = "Cancel", string button2Text = "Ok")
+        internal static void ShowCustom2ButtonMessage(string text, string header, UnityAction button1Action, UnityAction button2Action, string button1Text = "Cancel", string button2Text = "Ok")
         {
+            //ModUI.ShowYesNoMessage(text, header, button2Action);
+            GameObject messageBox = GameObject.Instantiate(ModUI.messageBox);
+            messageBox.transform.SetParent(ModUI.GetCanvas().transform);
+            messageBox.transform.localPosition = new Vector3(0, 0, 0);
+            messageBox.transform.localRotation = new Quaternion { eulerAngles = new Vector3(0, 0, 0) };
+            messageBox.transform.localScale = new Vector3(1, 1, 1);
+            messageBox.name = "Custom2ButtonMessage";
+
+            //General game objects
+            GameObject content = messageBox.transform.FindChild("Content").gameObject;
+            GameObject yesNo = content.transform.FindChild("YesNo").gameObject;
+            GameObject button1Obj = yesNo.transform.FindChild("Button").gameObject;
+            GameObject button2Obj = yesNo.transform.FindChild("Button 1").gameObject;
+
+            //Text objects
+            Text headerText = messageBox.transform.FindChild("Title").FindChild("Text").GetComponent<Text>();
+            Text messageText = content.transform.FindChild("Text").GetComponent<Text>();
+            Text button1TextObj = button1Obj.transform.FindChild("Text").GetComponent<Text>();
+            Text button2TextObj = button2Obj.transform.FindChild("Text").GetComponent<Text>();
+
+            //Button objects
+            Button button1 = button1Obj.GetComponent<Button>();
+            Button button2 = button2Obj.GetComponent<Button>();
+
+            headerText.text = header;
+            messageText.text = text;
+            button1TextObj.text = button1Text;
+            button2TextObj.text = button2Text;
+
+            UnityAction removeMessageBoxAction = new UnityAction(delegate ()
+            {
+                GameObject.Destroy(messageBox);
+            });
+
+            button1.onClick.AddListener(removeMessageBoxAction);
+            button2.onClick.AddListener(removeMessageBoxAction);
+
+            button1.onClick.AddListener(button1Action);
+            button2.onClick.AddListener(button2Action);
+
+            yesNo.SetActive(true);
+            messageBox.SetActive(true);
+            /*
             ModUI.ShowYesNoMessage(text, header, button2Action);
             try
             {
@@ -90,6 +133,7 @@ namespace ScrewablePartAPI
                 
             }
             catch { }
+            */
         }
 
         internal static PlayMakerFSM FindFsmOnGameObject(GameObject gameObject, string fsmName)

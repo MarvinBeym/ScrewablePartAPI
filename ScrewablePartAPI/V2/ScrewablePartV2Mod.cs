@@ -70,13 +70,17 @@ namespace ScrewablePartAPI.V2
         private string old_assetsBundleFilePath;
 
         
-        private string getUpdateUrl(string version)
+        private string GetUpdateUrl(string version)
         {
             return $"http://localhost/web/msc/screwablepartapi/public/versions/{version}.zip";
         }
-        private string getLastXReleasesUrl(int nReleases)
+        private string GetLastXReleasesUrl(int nReleases)
         {
             return $"http://localhost/web/msc/screwablepartapi/public/getLatestVersions.php?lastVersions={nReleases}";
+        }
+        private string GetVersionDownloadPath(string version)
+        {
+            return Path.Combine(modsFolderFilePath, $"{ID}_{version}_update.zip");
         }
 
         public override void OnMenuLoad()
@@ -111,7 +115,7 @@ namespace ScrewablePartAPI.V2
                 updateCheckResponse = new UpdateCheckResponse
                 {
                     message = "out-dated",
-                    available = "2.1.0"
+                    available = "2.2.0"
                 };
 
                 switch (updateCheckResponse.message)
@@ -123,26 +127,40 @@ namespace ScrewablePartAPI.V2
                             $"version {updateCheckResponse.available} is available on GitHub\n" +
                             $"Do you want to update automatically?\n" +
                             $"(Restart will be required)\n" +
-                            $"This can break mods using outdated versions", "ScrewablePartAPI is outdated", UpdateMessageNoClicked, UpdateMessageYesClicked);
+                            $"This can break mods using outdated versions", "ScrewablePartAPI is outdated", 
+                            new UnityAction(delegate()
+                            {
+                                SetMenuVisibility(true);
+                                LoadAssets();
+                            }), 
+                            new UnityAction(delegate() 
+                            {
+                                InstallVersion(updateCheckResponse.available);
+                            }));
+                        break;
+                    default:
+                        LoadAssets();
                         break;
                 }
             }
-
-
-            if(errorsDetected == 0)
+            else
             {
-                assetBundle = Helper.LoadAssetBundle(this, assetsFile);
-                material = assetBundle.LoadAsset<Material>("Screw-Material.mat");
-                soundClip = assetBundle.LoadAsset<AudioClip>("screwable_sound.wav");
-                clampModel = assetBundle.LoadAsset<GameObject>("Tube_Clamp.prefab");
-
-                nutModel = assetBundle.LoadAsset<GameObject>("screwable_nut.prefab");
-                screw1Model = assetBundle.LoadAsset<GameObject>("screwable_screw1.prefab");
-                screw2Model = assetBundle.LoadAsset<GameObject>("screwable_screw2.prefab");
-                screw3Model = assetBundle.LoadAsset<GameObject>("screwable_screw3.prefab");
-                assetBundle.Unload(false);
+                LoadAssets();
             }
+        }
 
+        private void LoadAssets()
+        {
+            assetBundle = Helper.LoadAssetBundle(this, assetsFile);
+            material = assetBundle.LoadAsset<Material>("Screw-Material.mat");
+            soundClip = assetBundle.LoadAsset<AudioClip>("screwable_sound.wav");
+            clampModel = assetBundle.LoadAsset<GameObject>("Tube_Clamp.prefab");
+
+            nutModel = assetBundle.LoadAsset<GameObject>("screwable_nut.prefab");
+            screw1Model = assetBundle.LoadAsset<GameObject>("screwable_screw1.prefab");
+            screw2Model = assetBundle.LoadAsset<GameObject>("screwable_screw2.prefab");
+            screw3Model = assetBundle.LoadAsset<GameObject>("screwable_screw3.prefab");
+            assetBundle.Unload(false);
         }
 
         private void SetMenuVisibility(bool state)
@@ -174,107 +192,47 @@ namespace ScrewablePartAPI.V2
 
         }
 
-        private void UpdateMessageYesClicked()
+        private void ExtractNewFiles(string version)
         {
-            string newVersionString = updateCheckResponse.available.Replace(".", "_");
-            string downloadFilePath = Path.Combine(modsFolderFilePath, $"{ID}_{newVersionString}_update.zip");
-
-            string oldDllFile = Assembly.GetExecutingAssembly().Location;
-            string oldXmlFile = Assembly.GetExecutingAssembly().Location;
-            oldXmlFile = oldXmlFile.Replace(".dll", ".xml");
-            string oldAssetsFile = Path.Combine(ModLoader.GetModAssetsFolder(this), assetsFile);
             
-            
-
-            string newDllFile = oldDllFile;
-            string newAssetsFile = oldAssetsFile;
-            string newXmlFile = oldXmlFile;
-
-            oldDllFile = oldDllFile.Replace($"{ID}.dll", $"{ID}.old_dll");
-            oldAssetsFile = oldAssetsFile.Replace(assetsFile, "screwableapi.old_unity3d");
-            oldXmlFile = oldXmlFile.Replace($"{ID}.xml", $"{ID}.old_xml");
-
-            RenameFile(newDllFile, oldDllFile);
-            RenameFile(newXmlFile, oldXmlFile);
-            RenameFile(newAssetsFile, oldAssetsFile);
-
-            if (!File.Exists(downloadFilePath))
+            using (ZipFile zip = new ZipFile(GetVersionDownloadPath(version)))
             {
-                using (var client = new WebClient())
+                int filesExtracted = 0;
+                List<ZipEntry> filesToExtract = new List<ZipEntry>();
+                foreach (ZipEntry zipEntry in zip.Entries)
                 {
-                    client.DownloadFile(getUpdateUrl(newVersionString), downloadFilePath);
-                }
-            }
-            try
-            {
-                int fileRenameCounter = 0;
-                using (ZipFile zip = new ZipFile(downloadFilePath))
-                {
-                    List<ZipEntry> filesToExtract = new List<ZipEntry>();
-
-                    foreach (ZipEntry zipEntry in zip.Entries)
+                    if (zipEntry.IsDirectory)
                     {
-
-                        if (zipEntry.IsDirectory)
-                        {
-                            continue;
-                        }
-                        filesToExtract.Add(zipEntry);
+                        continue;
                     }
+                    filesToExtract.Add(zipEntry);
+                }
+                
 
-                    
-                    foreach (ZipEntry entry in filesToExtract)
+                foreach (ZipEntry zipEntry in filesToExtract)
+                {
+                    if (zipEntry.FileName.EndsWith(assetsFile))
                     {
-                        if (entry.FileName.EndsWith(assetsFile))
-                        {
-                            entry.FileName = Path.GetFileName(newAssetsFile);
-                            entry.Extract(Path.GetDirectoryName(newAssetsFile), ExtractExistingFileAction.OverwriteSilently);
-                            fileRenameCounter++;
-                        }
-                        else if (entry.FileName.EndsWith($"{ID}.dll"))
-                        {
-                            entry.FileName = Path.GetFileName(newDllFile);
-                            entry.Extract(Path.GetDirectoryName(newDllFile), ExtractExistingFileAction.OverwriteSilently);
-                            fileRenameCounter++;
-                        }
-                        else if (entry.FileName.EndsWith($"{ID}.xml"))
-                        {
-                            entry.FileName = Path.GetFileName(newXmlFile);
-                            entry.Extract(Path.GetDirectoryName(newXmlFile), ExtractExistingFileAction.OverwriteSilently);
-                            fileRenameCounter++;
-                        }
+                        filesExtracted += ExtractSingleZipEntry(zipEntry, assetsBundleFilePath);
+                    }
+                    else if (zipEntry.FileName.EndsWith($"{ID}.dll"))
+                    {
+                        filesExtracted += ExtractSingleZipEntry(zipEntry, dllFilePath);
+                    }
+                    else if (zipEntry.FileName.EndsWith($"{ID}.xml"))
+                    {
+                        filesExtracted += ExtractSingleZipEntry(zipEntry, xmlFilePath);
                     }
                 }
-
-                if(fileRenameCounter == 3)
+                
+                if(filesExtracted == filesToExtract.Count)
                 {
-                    ShowYesNoMessage("The game has to be closed and restarted\n" +
-                        "Game will close when you click YES\n" +
-                        "If you press NO the game won't be playable... !RESTART!\n" +
-                        "After the restart, the old files will be removed", "Update downloaded", Helper.ExitGame, Helper.ExitGame);
+                    Helper.ShowCustom2ButtonMessage("The updater has replaced the required files\n" +
+                        "For the installation to finish, the game has to be restarted/closed",
+                        "Update downloaded", Helper.ExitGame, Helper.ExitGame, "Close game", "Close game");
                 }
+            };
 
-
-            }
-            catch (Exception ex)
-            {
-                ModUI.ShowMessage($"Update failed, please update manually\n ex: {ex.Message}");
-            }
-            File.Delete(downloadFilePath);
-        }
-
-        private void ShowYesNoMessage(string text, string header, Action YesAction, UnityAction NoAction)
-        {
-            ModUI.ShowYesNoMessage(text, header, YesAction);
-            try
-            {
-                Button noButton = GameObject.Find("MSCLoader MB(Clone)").transform.FindChild("Content").FindChild("YesNo").FindChild("Button").GetComponent<Button>();
-                noButton.onClick.AddListener(NoAction);
-            }
-            catch
-            {
-                NoAction.Invoke();
-            }
         }
 
         private void LoadSettingsSave()
@@ -293,33 +251,121 @@ namespace ScrewablePartAPI.V2
 
         public override void ModSettings()
         {
-            string responseJson = Helper.MakeGetRequest(getLastXReleasesUrl(5));
+            string responseJson = Helper.MakeGetRequest(GetLastXReleasesUrl(5));
             List<string> lastXVersions = JsonConvert.DeserializeObject<LastXReleasesRespons>(responseJson).data;
+            List<string> filteredXVersions = new List<string>();
             Settings.AddCheckBox(this, showBoltSizeSetting);
             Settings.AddCheckBox(this, ignoreUpdatesSetting);
             Settings.AddHeader(this, "Change version");
-            Settings.AddText(this, 
+
+            for (int i = 0; i < lastXVersions.Count; i++)
+            {
+                string version = lastXVersions[i];
+                Version versionCheckObj = new Version(version);
+                if (versionCheckObj.CompareTo(new Version("2.1.0")) <= 0)
+                {
+                    continue;
+                }
+                filteredXVersions.Add(version);
+            }
+
+            if (filteredXVersions.Count == 0)
+            {
+                Settings.AddText(this, "No newer versions available or latest already installed");
+            }
+            else
+            {
+                Settings.AddText(this,
                 "This will also disable the auto updater!\n" +
                 "The checkbox will only update when closing the settings window!");
-            foreach(string version in lastXVersions)
-            {
-                string versionString = version.Replace(".", "_");
-                Settings tmpSetting = new Settings($"changeVersion{versionString}", "Install version", new Action(delegate ()
+
+                for (int i = 0; i < filteredXVersions.Count; i++)
                 {
-                    InstallVersion(versionString, true);
-                }));
-                Settings.AddButton(this, tmpSetting, version);
+                    string version = filteredXVersions[i];
+                    Version versionCheckObj = new Version(version);
+                    Action buttonAction = new Action(delegate ()
+                    {
+                        InstallVersion(version, true);
+                    });
+
+                    Settings buttonSetting = new Settings($"changeVersion{version}", "Install version", buttonAction);
+
+                    if (i == 0)
+                    {
+                        Settings.AddButton(this, buttonSetting, new Color32(43, 191, 38, 255), new Color32(75, 255, 69, 255), new Color32(0, 255, 0, 255), $"{version} (latest)");
+                    }
+                    else
+                    {
+                        Settings.AddButton(this, buttonSetting, version);
+                    }
+                }
             }
         }
 
-        private void InstallVersion(string versionString, bool disableAutoUpdater = false)
+        private void InstallVersion(string version, bool disableAutoUpdater = false)
         {
             if (disableAutoUpdater)
             {
                 ignoreUpdatesSetting.Value = true;
             }
-            
-            ModConsole.Print(versionString);
+
+            try
+            {
+                using (var client = new WebClient())
+                {
+                    client.DownloadFile(GetUpdateUrl(version), GetVersionDownloadPath(version));
+                }
+            }
+            catch
+            {
+                ModConsole.Error($"Error occurred while trying to download the update file for v{version}");
+            }
+
+            if (File.Exists(GetVersionDownloadPath(version)))
+            {
+                RenameFileToOld(dllFilePath, old_dllFilePath);
+                RenameFileToOld(xmlFilePath, old_xmlFilePath);
+                RenameFileToOld(assetsBundleFilePath, old_assetsBundleFilePath);
+                ExtractNewFiles(version);
+            }
+            else
+            {
+                ModConsole.Error("Update file was downloaded but not found in the expected folder");
+            }
+            File.Delete(GetVersionDownloadPath(version));
+        }
+
+        private void RenameFileToOld(string currentPath, string newPath)
+        {
+            try
+            {
+                if (File.Exists(newPath))
+                {
+                    try
+                    {
+                        File.Delete(newPath);
+                    }
+                    catch
+                    {
+                        ModConsole.Error("New file already exists and deletion before renaming failed");
+                    }
+                }
+                if (File.Exists(currentPath))
+                {
+                    try
+                    {
+                        File.Move(currentPath, newPath);
+                    }
+                    catch
+                    {
+                        ModConsole.Error("Unable to rename current file to new name");
+                    }
+                }
+            }
+            catch
+            {
+                ModConsole.Error("Unable to rename current file to old name");
+            }
         }
 
 
@@ -331,15 +377,23 @@ namespace ScrewablePartAPI.V2
             }
         }
 
-        private void ExtractSingleZipEntry(ZipEntry zipEntry, string fullPathToFile)
+        private int ExtractSingleZipEntry(ZipEntry zipEntry, string fullPathToFile)
         {
-            zipEntry.FileName = Path.GetFileName(fullPathToFile);
-            zipEntry.Extract(Path.GetDirectoryName(fullPathToFile), ExtractExistingFileAction.OverwriteSilently);
-        }
+            try
+            {
+                zipEntry.FileName = Path.GetFileName(fullPathToFile);
+                zipEntry.Extract(Path.GetDirectoryName(fullPathToFile), ExtractExistingFileAction.OverwriteSilently);
+                if (File.Exists(fullPathToFile))
+                {
+                    return 1;
+                }
+            }
+            catch
+            {
+                return 0;
+            }
+            return 0;
 
-        private void UpdateMessageNoClicked()
-        {
-            SetMenuVisibility(true);
         }
     }
 }
