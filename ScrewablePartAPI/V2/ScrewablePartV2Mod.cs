@@ -131,7 +131,7 @@ namespace ScrewablePartAPI.V2
                             ModConsole.Warning($"ScrewablePartAPI outdated. version {updateCheckResponse.available} available");
                             SetMenuVisibility(false);
                             Helper.ShowCustom2ButtonMessage($"ScrewablePartAPI is outdated\n" +
-                                $"version {updateCheckResponse.available} is available on GitHub\n" +
+                                $"version {updateCheckResponse.available} is available!!\n" +
                                 $"Do you want to update automatically?\n" +
                                 $"(Restart will be required)\n" +
                                 $"This can break mods using outdated versions", "ScrewablePartAPI is outdated",
