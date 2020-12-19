@@ -53,6 +53,7 @@ namespace ScrewablePartAPI.V2
         internal static GameObject screw3Model;
 
         //Updater stuff
+        private bool serverReachable;
         private GameObject interfaceObject;
         private GameObject interfaceActive;
         private GameObject quad7;
@@ -68,18 +69,18 @@ namespace ScrewablePartAPI.V2
         private string old_xmlFilePath;
         private string old_assetsBundleFilePath;
 
-
+        private const string host = "localhost";
         private string GetLatestReleaseVersionUrl(string currentVersion)
         {
-            return $"http://localhost/web/msc/screwablepartapi/public/checkUpdateAvailable.php?currentVersion={currentVersion}";
+            return $"http://{host}/web/msc/screwablepartapi/public/checkUpdateAvailable.php?currentVersion={currentVersion}";
         }
         private string GetUpdateDownloadUrl(string version)
         {
-            return $"http://localhost/web/msc/screwablepartapi/public/versions/{version}.zip";
+            return $"http://{host}/web/msc/screwablepartapi/public/versions/{version}.zip";
         }
         private string GetLastXReleasesUrl(int nReleases)
         {
-            return $"http://localhost/web/msc/screwablepartapi/public/getLatestVersions.php?lastVersions={nReleases}";
+            return $"http://{host}/web/msc/screwablepartapi/public/getLatestVersions.php?lastVersions={nReleases}";
         }
         private string GetVersionDownloadPath(string version)
         {
@@ -88,10 +89,8 @@ namespace ScrewablePartAPI.V2
 
         public override void OnMenuLoad()
         {
-            
             ScrewablePartV2.version = this.Version;
-
-            int errorsDetected = 0;
+            string availableVersion = this.Version;
             modsFolderFilePath = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
             dllFilePath = Path.Combine(modsFolderFilePath, $"{ID}.dll");
             xmlFilePath = Path.Combine(modsFolderFilePath, $"{ID}.xml");
@@ -112,13 +111,18 @@ namespace ScrewablePartAPI.V2
             }
             catch{}
 
+            if (!serverReachable)
+            {
+                ModConsole.Warning($"{ID} could not reach the update server");
+                LoadAssets();
+                return;
+            }
+
             if(!(bool)ignoreUpdatesSetting.Value)
             {
-                //Temp
-
                 string responseJson = Helper.MakeGetRequest(GetLatestReleaseVersionUrl(Version));
                 UpdateCheckResponse updateCheckResponse = JsonConvert.DeserializeObject<UpdateCheckResponse>(responseJson);
-
+                availableVersion = updateCheckResponse.available;
                 switch (updateCheckResponse.message)
                 {
                     case "out-dated":
@@ -148,6 +152,20 @@ namespace ScrewablePartAPI.V2
             {
                 LoadAssets();
             }
+            GameObject mscLoaderInfo = GameObject.Find("MSCLoader Info");
+
+            try
+            {
+                GameObject screwablePartMenuInfoTextObject = GameObject.Instantiate(GameObject.Find("MSCLoader Info Text"));
+                screwablePartMenuInfoTextObject.name = "ScrewablePartAPI Info Text";
+                screwablePartMenuInfoTextObject.transform.SetParent(mscLoaderInfo.transform);
+                Text screwablePartMenuInfoText = screwablePartMenuInfoTextObject.GetComponent<Text>();
+                screwablePartMenuInfoText.text = 
+                    $"{Name} <color=cyan>v{Version}</color> loaded! " +
+                    $"({(Version == availableVersion ? "<color=lime>Up to date</color>" : "<color=red>Outdated</color>")})";
+            }
+            catch { }
+            
         }
 
         private void LoadAssets()
@@ -246,18 +264,23 @@ namespace ScrewablePartAPI.V2
                 showBoltSizeSetting.Value = list.settings[0].Value;
                 ignoreUpdatesSetting.Value = list.settings[1].Value;
             }
-            
-
         }
 
         public override void ModSettings()
         {
+            serverReachable = Helper.ServerReachable(host);
+            Settings.AddCheckBox(this, showBoltSizeSetting);
+            Settings.AddCheckBox(this, ignoreUpdatesSetting);
+            Settings.AddHeader(this, $"Change version - Current: {Version}");
+
+            if (!serverReachable)
+            {
+                Settings.AddText(this, "Server couldn't be reached");
+                return;
+            }
             string responseJson = Helper.MakeGetRequest(GetLastXReleasesUrl(5));
             List<string> lastXVersions = JsonConvert.DeserializeObject<LastXReleasesRespons>(responseJson).data;
             List<string> filteredXVersions = new List<string>();
-            Settings.AddCheckBox(this, showBoltSizeSetting);
-            Settings.AddCheckBox(this, ignoreUpdatesSetting);
-            Settings.AddHeader(this, "Change version");
 
             for (int i = 0; i < lastXVersions.Count; i++)
             {
@@ -305,6 +328,11 @@ namespace ScrewablePartAPI.V2
 
         private void InstallVersion(string version, bool disableAutoUpdater = false)
         {
+            if(ModLoader.GetCurrentScene() != CurrentScene.MainMenu)
+            {
+                ModUI.ShowMessage("Updating/Changing version is only supported in main menu.", "Update installation stopped");
+                return;
+            }
             if (disableAutoUpdater)
             {
                 ignoreUpdatesSetting.Value = true;

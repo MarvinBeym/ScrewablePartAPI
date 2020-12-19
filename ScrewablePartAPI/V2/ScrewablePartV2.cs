@@ -7,10 +7,24 @@ using System.Net;
 using UnityEngine;
 namespace ScrewablePartAPI.V2
 {
+    /// <summary>
+    /// Class that can be used to define basic information
+    /// </summary>
     public class ScrewablePartV2BaseInfo
     {
+        /// <summary>
+        /// The full path to the screws save.
+        /// </summary>
         public string savePath;
+        /// <summary>
+        /// Defines if the screws created will show there size to the user when user looks at the screw
+        /// </summary>
         public bool showScrewSize;
+        /// <summary>
+        /// Constructor for base info class
+        /// </summary>
+        /// <param name="savePath">path to screws save</param>
+        /// <param name="showScrewSize">Should the screw size be shown to the user</param>
         public ScrewablePartV2BaseInfo(string savePath, bool showScrewSize)
         {
             this.savePath = savePath;
@@ -55,7 +69,7 @@ namespace ScrewablePartAPI.V2
         /// <summary>
         /// The object constructor
         /// </summary>
-        /// <param name="saveFilePath">The path to your mods screw save file</param>
+        /// <param name="baseInfo">Base info containing general setup</param>
         /// <param name="id">The id used for loading of the save. It is recommended to use the parent.name for this</param>
         /// <param name="parent">The parent gameobject the screws will be added to as childs</param>
         /// <param name="screws">An array of all defined screws</param>
@@ -74,7 +88,7 @@ namespace ScrewablePartAPI.V2
 
             LoadTightness(save, id, screws);
 
-            InitScrewable(id, parent, screws, baseInfo.showScrewSize);
+            InitScrewable(parent, screws, baseInfo.showScrewSize);
         }
 
         /// <summary>
@@ -162,11 +176,10 @@ namespace ScrewablePartAPI.V2
         /// <summary>
         /// Initializes the screwable part
         /// </summary>
-        /// <param name="baseInfo">The pre loaded base info</param>
-        /// <param name="id">The id for the screw</param>
         /// <param name="parent">The parent where the screws are supposed to be placed on</param>
         /// <param name="screws">The array of screws to initialize</param>
-        private void InitScrewable(string id, GameObject parent, ScrewV2[] screws, bool showScrewSize)
+        /// <param name="showScrewSize">Auto set. This is used by the logic to detect if the screw size can be shown to the user</param>
+        private void InitScrewable(GameObject parent, ScrewV2[] screws, bool showScrewSize)
         {
             for(int i = 0; i < screws.Length; i++)
             {

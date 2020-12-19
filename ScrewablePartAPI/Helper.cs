@@ -5,11 +5,12 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Net.NetworkInformation;
 using System.Text;
 using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.UI;
-
+using Ping = System.Net.NetworkInformation.Ping;
 namespace ScrewablePartAPI
 {
     /// <summary>
@@ -30,8 +31,21 @@ namespace ScrewablePartAPI
                 return reader.ReadToEnd();
             }
         }
-
-
+        internal static bool ServerReachable(string host)
+        {
+            using (Ping pingSender = new Ping())
+            {
+                try
+                {
+                    PingReply reply = pingSender.Send(host);
+                    return (reply.Status == IPStatus.Success);
+                }
+                catch (Exception ex)
+                {
+                    return false;
+                }
+            }
+        }
         internal static string CombinePaths(params string[] paths)
         {
             if (paths == null)
