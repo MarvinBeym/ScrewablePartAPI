@@ -145,6 +145,9 @@ namespace ScrewablePartAPI.V2
                                     InstallVersion(updateCheckResponse.available);
                                 }));
                             break;
+                        case "up-to-date":
+                            availableVersion = Version;
+                            break;
                         default:
                             LoadAssets();
                             break;
