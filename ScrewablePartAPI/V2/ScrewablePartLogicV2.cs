@@ -163,16 +163,21 @@ namespace ScrewablePartAPI.V2
                         else { screwablePart.ScrewOut(screw); }
                     }
 
-                    if (screws.All(screwOfArr => screwOfArr.tightness == screwablePart.maxTightness) && !partFixed)
-                    {
-                        parentCollider.enabled = false;
-                        partFixed = true;
-                    }
-                    else if (!partFixed)
-                    {
-                        parentCollider.enabled = true;
-                    }
+                    CheckAllScrewsTight(screws);
                 }
+            }
+        }
+
+        internal void CheckAllScrewsTight(ScrewV2[] screws)
+        {
+            if (screws.All(screwOfArr => screwOfArr.tightness == screwablePart.maxTightness) && !partFixed)
+            {
+                parentCollider.enabled = false;
+                partFixed = true;
+            }
+            else if (!partFixed)
+            {
+                parentCollider.enabled = true;
             }
         }
 

@@ -195,8 +195,10 @@ namespace ScrewablePartAPI.V2
                     ScrewIn(screw, false);
                 }
             }
+            
             logic = parent.AddComponent<ScrewablePartLogicV2>();
             logic.Init(parent, screws, this);
+            logic.CheckAllScrewsTight(screws);
         }
 
         /// <summary>
