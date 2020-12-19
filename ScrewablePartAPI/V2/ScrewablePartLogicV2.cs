@@ -83,7 +83,6 @@ namespace ScrewablePartAPI.V2
         /// <summary>
         /// Initializes the logic by passing information required by the logic
         /// </summary>
-        /// <param name="baseInfo">The pre loaded base info</param>
         /// <param name="parent">The parent (equal to this.gameobject in this case)</param>
         /// <param name="screws">The array of screws this logic is responsible for</param>
         /// <param name="screwablePart">The ScrewablePartV2 object that created this logic object</param>

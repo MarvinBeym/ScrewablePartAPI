@@ -60,15 +60,7 @@ namespace ScrewablePartAPI
             }
             return paths.Aggregate(Path.Combine);
         }
-        internal static T LoadSaveOrReturnNew<T>(string saveFilePath) where T : new()
-        {
-            if (File.Exists(saveFilePath))
-            {
-                string serializedData = File.ReadAllText(saveFilePath);
-                return JsonConvert.DeserializeObject<T>(serializedData);
-            }
-            return new T();
-        }
+
         internal static AssetBundle LoadAssetBundle(Mod mod, string fileName)
         {
             try

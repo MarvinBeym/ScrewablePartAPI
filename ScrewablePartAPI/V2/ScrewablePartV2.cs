@@ -15,7 +15,7 @@ namespace ScrewablePartAPI.V2
         /// <summary>
         /// The full path to the screws save.
         /// </summary>
-        public string savePath;
+        public Dictionary<string, int[]> save;
         /// <summary>
         /// Defines if the screws created will show there size to the user when user looks at the screw
         /// </summary>
@@ -27,7 +27,7 @@ namespace ScrewablePartAPI.V2
         /// <param name="showScrewSize">Should the screw size be shown to the user</param>
         public ScrewablePartV2BaseInfo(string savePath, bool showScrewSize)
         {
-            this.savePath = savePath;
+            save = ScrewablePartV2.LoadSave(savePath);
             this.showScrewSize = showScrewSize;
         }
     }
@@ -75,9 +75,7 @@ namespace ScrewablePartAPI.V2
         /// <param name="screws">An array of all defined screws</param>
         public ScrewablePartV2(ScrewablePartV2BaseInfo baseInfo, string id, GameObject parent, ScrewV2[] screws)
         {
-            this.saveFilePath = baseInfo.savePath;
-
-            save = Helper.LoadSaveOrReturnNew<Dictionary<string, int[]>>(saveFilePath);
+            save = baseInfo.save;
 
             maxTightness = 8;
             rotationStep = 360 / maxTightness;
@@ -123,6 +121,21 @@ namespace ScrewablePartAPI.V2
             }
             logic.partFixed = false;
             logic.parentCollider.enabled = true;
+        }
+
+        /// <summary>
+        /// Small helper function that will load the save as a dictionary or return a new dictionary if the file wasn't found
+        /// </summary>
+        /// <param name="saveFilePath">The path to the save file</param>
+        /// <returns>dictionary containing all the saved values key equals id used for creation</returns>
+        public static Dictionary<string, int[]> LoadSave(string saveFilePath)
+        {
+            if (File.Exists(saveFilePath))
+            {
+                string serializedData = File.ReadAllText(saveFilePath);
+                return JsonConvert.DeserializeObject<Dictionary<string, int[]>>(serializedData);
+            }
+            return new Dictionary<string, int[]>();
         }
 
         /// <summary>
