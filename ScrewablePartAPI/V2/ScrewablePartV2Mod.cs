@@ -68,19 +68,19 @@ namespace ScrewablePartAPI.V2
         private string old_dllFilePath;
         private string old_xmlFilePath;
         private string old_assetsBundleFilePath;
-
-        private const string host = "localhost";
+        ///http://screwablepartapi.mbeym.de/getLatestVersions.php?lastVersions=5
+        private const string host = "screwablepartapi.mbeym.de";
         private string GetLatestReleaseVersionUrl(string currentVersion)
         {
-            return $"http://{host}/web/msc/screwablepartapi/public/checkUpdateAvailable.php?currentVersion={currentVersion}";
+            return $"http://{host}/checkUpdateAvailable.php?currentVersion={currentVersion}";
         }
         private string GetUpdateDownloadUrl(string version)
         {
-            return $"http://{host}/web/msc/screwablepartapi/public/versions/{version}.zip";
+            return $"http://{host}/versions/{version}.zip";
         }
         private string GetLastXReleasesUrl(int nReleases)
         {
-            return $"http://{host}/web/msc/screwablepartapi/public/getLatestVersions.php?lastVersions={nReleases}";
+            return $"http://{host}/getLatestVersions.php?lastVersions={nReleases}";
         }
         private string GetVersionDownloadPath(string version)
         {
@@ -120,33 +120,42 @@ namespace ScrewablePartAPI.V2
 
             if(!(bool)ignoreUpdatesSetting.Value)
             {
-                string responseJson = Helper.MakeGetRequest(GetLatestReleaseVersionUrl(Version));
-                UpdateCheckResponse updateCheckResponse = JsonConvert.DeserializeObject<UpdateCheckResponse>(responseJson);
-                availableVersion = updateCheckResponse.available;
-                switch (updateCheckResponse.message)
+                try
                 {
-                    case "out-dated":
-                        ModConsole.Warning($"ScrewablePartAPI outdated. version {updateCheckResponse.available} available");
-                        SetMenuVisibility(false);
-                        Helper.ShowCustom2ButtonMessage($"ScrewablePartAPI is outdated\n" +
-                            $"version {updateCheckResponse.available} is available on GitHub\n" +
-                            $"Do you want to update automatically?\n" +
-                            $"(Restart will be required)\n" +
-                            $"This can break mods using outdated versions", "ScrewablePartAPI is outdated", 
-                            new UnityAction(delegate()
-                            {
-                                SetMenuVisibility(true);
-                                LoadAssets();
-                            }), 
-                            new UnityAction(delegate() 
-                            {
-                                InstallVersion(updateCheckResponse.available);
-                            }));
-                        break;
-                    default:
-                        LoadAssets();
-                        break;
+                    string responseJson = Helper.MakeGetRequest(GetLatestReleaseVersionUrl(Version));
+                    UpdateCheckResponse updateCheckResponse = JsonConvert.DeserializeObject<UpdateCheckResponse>(responseJson);
+                    availableVersion = updateCheckResponse.available;
+                    switch (updateCheckResponse.message)
+                    {
+                        case "out-dated":
+                            ModConsole.Warning($"ScrewablePartAPI outdated. version {updateCheckResponse.available} available");
+                            SetMenuVisibility(false);
+                            Helper.ShowCustom2ButtonMessage($"ScrewablePartAPI is outdated\n" +
+                                $"version {updateCheckResponse.available} is available on GitHub\n" +
+                                $"Do you want to update automatically?\n" +
+                                $"(Restart will be required)\n" +
+                                $"This can break mods using outdated versions", "ScrewablePartAPI is outdated",
+                                new UnityAction(delegate ()
+                                {
+                                    SetMenuVisibility(true);
+                                    LoadAssets();
+                                }),
+                                new UnityAction(delegate ()
+                                {
+                                    InstallVersion(updateCheckResponse.available);
+                                }));
+                            break;
+                        default:
+                            LoadAssets();
+                            break;
+                    }
                 }
+                catch(Exception ex)
+                {
+                    ModConsole.Error(ex.Message);
+                    LoadAssets();
+                }
+                
             }
             else
             {
@@ -278,20 +287,30 @@ namespace ScrewablePartAPI.V2
                 Settings.AddText(this, "Server couldn't be reached");
                 return;
             }
-            string responseJson = Helper.MakeGetRequest(GetLastXReleasesUrl(5));
-            List<string> lastXVersions = JsonConvert.DeserializeObject<LastXReleasesRespons>(responseJson).data;
-            List<string> filteredXVersions = new List<string>();
 
-            for (int i = 0; i < lastXVersions.Count; i++)
+            List<string> filteredXVersions = new List<string>();
+            try
             {
-                string version = lastXVersions[i];
-                Version versionCheckObj = new Version(version);
-                if (versionCheckObj.CompareTo(new Version("2.1.0")) <= 0)
+                string responseJson = Helper.MakeGetRequest(GetLastXReleasesUrl(5));
+                List<string> lastXVersions = JsonConvert.DeserializeObject<LastXReleasesRespons>(responseJson).data;
+
+
+                for (int i = 0; i < lastXVersions.Count; i++)
                 {
-                    continue;
+                    string version = lastXVersions[i];
+                    Version versionCheckObj = new Version(version);
+                    if (versionCheckObj.CompareTo(new Version("2.1.0")) <= 0)
+                    {
+                        continue;
+                    }
+                    filteredXVersions.Add(version);
                 }
-                filteredXVersions.Add(version);
             }
+            catch (Exception ex)
+            {
+                ModConsole.Print(ex.Message);
+            }
+            
 
             if (filteredXVersions.Count == 0)
             {

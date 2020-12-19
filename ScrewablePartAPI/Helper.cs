@@ -19,17 +19,23 @@ namespace ScrewablePartAPI
     internal class Helper
     {
 
-        internal static string MakeGetRequest(string uri)
+        internal static string MakeGetRequest(string url)
         {
-            HttpWebRequest request = (HttpWebRequest)WebRequest.Create(uri);
-            request.AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate;
-
-            using (HttpWebResponse response = (HttpWebResponse)request.GetResponse())
-            using (Stream stream = response.GetResponseStream())
-            using (StreamReader reader = new StreamReader(stream))
+            try
             {
-                return reader.ReadToEnd();
+                HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);
+                using (HttpWebResponse response = (HttpWebResponse)request.GetResponse())
+                using (Stream stream = response.GetResponseStream())
+                using (StreamReader reader = new StreamReader(stream))
+                {
+                    return reader.ReadToEnd();
+                }
             }
+            catch
+            {
+                throw new Exception("Get request failed for some unknown reason.");
+            }
+
         }
         internal static bool ServerReachable(string host)
         {
