@@ -3,6 +3,7 @@ using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Net;
 using UnityEngine;
 namespace ScrewablePartAPI.V2
@@ -48,8 +49,9 @@ namespace ScrewablePartAPI.V2
         private float transformStep;
         internal int maxTightness;
 
+        internal Collider parentCollider;
         private GameObject parent;
-        private ScrewV2[] screws;
+        public ScrewV2[] screws;
         private ScrewablePartLogicV2 logic;
         private string saveFilePath;
 
@@ -58,13 +60,7 @@ namespace ScrewablePartAPI.V2
         /// <summary>
         /// Returns if the part is fixed (all screws have reached the maximum tightness)
         /// </summary>
-        public bool partFixed
-        {
-            get
-            {
-                return logic.partFixed;
-            }
-        }
+        public bool partFixed = false;
 
         /// <summary>
         /// The object constructor
@@ -85,7 +81,7 @@ namespace ScrewablePartAPI.V2
             this.screws = screws;
 
             LoadTightness(save, id, screws);
-
+            parentCollider = parent.GetComponent<Collider>();
             InitScrewable(parent, screws, baseInfo.showScrewSize);
         }
 
@@ -102,8 +98,8 @@ namespace ScrewablePartAPI.V2
                 screw.gameObject.transform.localPosition = Helper.CopyVector3(screw.position);
                 screw.gameObject.transform.localRotation = new Quaternion { eulerAngles = Helper.CopyVector3(screw.rotation) };
             }
-            logic.partFixed = false;
-            logic.parentCollider.enabled = true;
+            partFixed = false;
+            parentCollider.enabled = true;
         }
 
         /// <summary>
@@ -119,8 +115,8 @@ namespace ScrewablePartAPI.V2
                 screw.gameObject.transform.localPosition = Helper.CopyVector3(screw.position);
                 screw.gameObject.transform.localRotation = new Quaternion { eulerAngles = Helper.CopyVector3(screw.rotation) };
             }
-            logic.partFixed = false;
-            logic.parentCollider.enabled = true;
+            partFixed = false;
+            parentCollider.enabled = true;
         }
 
         /// <summary>
@@ -211,7 +207,37 @@ namespace ScrewablePartAPI.V2
             
             logic = parent.AddComponent<ScrewablePartLogicV2>();
             logic.Init(parent, screws, this);
-            logic.CheckAllScrewsTight(screws);
+        }
+
+        public void SetScrewPosition(ScrewV2 screw, int tightness, bool useAudio = false)
+        {
+            if(screw.tightness > tightness)
+            {
+                while(screw.tightness != tightness)
+                {
+                    ScrewOut(screw, useAudio);
+                }
+            }
+            else if(screw.tightness < tightness)
+            {
+                while (screw.tightness != tightness)
+                {
+                    ScrewIn(screw, useAudio);
+                }
+            }
+        }
+
+        internal void CheckAllScrewsTight(ScrewV2[] screws)
+        {
+            if (screws.All(screwOfArr => screwOfArr.tightness == maxTightness) && !partFixed)
+            {
+                parentCollider.enabled = false;
+                partFixed = true;
+            }
+            else if (!partFixed)
+            {
+                parentCollider.enabled = true;
+            }
         }
 
         /// <summary>
@@ -231,7 +257,7 @@ namespace ScrewablePartAPI.V2
                 screw.gameObject.transform.Translate(0f, 0f, -transformStep);
 
                 screw.tightness++;
-                //UpdateScrewInfoTightness(hitScrew, screw.tightness);
+                CheckAllScrewsTight(screws);
             }
         }
 
@@ -254,7 +280,7 @@ namespace ScrewablePartAPI.V2
 
                 screw.tightness--;
             }
-            logic.partFixed = false;
+            partFixed = false;
         }
 
         /// <summary>
@@ -312,6 +338,8 @@ namespace ScrewablePartAPI.V2
                     break;
             }
             screw = Helper.SetObjectNameTagLayer(screw, name, "DontCollide");
+            Collider screwCollider = screw.GetComponent<Collider>();
+            screwCollider.isTrigger = true;
             screw.transform.SetParent(parent.transform);
             screw.transform.localPosition = Helper.CopyVector3(position);
             screw.transform.localRotation = new Quaternion { eulerAngles = Helper.CopyVector3(rotation) };

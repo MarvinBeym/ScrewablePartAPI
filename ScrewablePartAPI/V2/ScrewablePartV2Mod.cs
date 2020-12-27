@@ -31,7 +31,7 @@ namespace ScrewablePartAPI.V2
 
         public override string ID => "ScrewablePartAPI";
         public override string Name => "ScrewablePartAPI";
-        public override string Version => "2.1.1";
+        public override string Version => "2.1.2";
 
         public override string Author => "DonnerPlays";
         public override bool UseAssetsFolder => true;

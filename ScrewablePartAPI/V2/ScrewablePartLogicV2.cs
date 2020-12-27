@@ -18,13 +18,10 @@ namespace ScrewablePartAPI.V2
             Ratchet,
         };
 
-        internal bool partFixed = false;
-
         private Material screwMaterial;
         private AudioClip screwSound;
 
         private GameObject parent;
-        internal Collider parentCollider;
         private ScrewV2[] screws;
         private ScrewablePartV2 screwablePart;
 
@@ -93,7 +90,6 @@ namespace ScrewablePartAPI.V2
             this.parent = parent;
             this.screws = screws;
             this.screwablePart = screwablePart;
-            parentCollider = parent.GetComponent<Collider>();
         }
 
 
@@ -161,22 +157,7 @@ namespace ScrewablePartAPI.V2
                         }
                         else { screwablePart.ScrewOut(screw); }
                     }
-
-                    CheckAllScrewsTight(screws);
                 }
-            }
-        }
-
-        internal void CheckAllScrewsTight(ScrewV2[] screws)
-        {
-            if (screws.All(screwOfArr => screwOfArr.tightness == screwablePart.maxTightness) && !partFixed)
-            {
-                parentCollider.enabled = false;
-                partFixed = true;
-            }
-            else if (!partFixed)
-            {
-                parentCollider.enabled = true;
             }
         }
 

@@ -1,0 +1,42 @@
+ManifestFileVersion: 0
+CRC: 4286502710
+Hashes:
+  AssetFileHash:
+    serializedVersion: 2
+    Hash: f504ad17c4f603bbd5300ce8444e43d6
+  TypeTreeHash:
+    serializedVersion: 2
+    Hash: a483284443ba3a7fce614a622847e78c
+HashAppended: 0
+ClassTypes:
+- Class: 1
+  Script: {instanceID: 0}
+- Class: 4
+  Script: {instanceID: 0}
+- Class: 21
+  Script: {instanceID: 0}
+- Class: 23
+  Script: {instanceID: 0}
+- Class: 28
+  Script: {instanceID: 0}
+- Class: 33
+  Script: {instanceID: 0}
+- Class: 43
+  Script: {instanceID: 0}
+- Class: 48
+  Script: {instanceID: 0}
+- Class: 83
+  Script: {instanceID: 0}
+- Class: 135
+  Script: {instanceID: 0}
+- Class: 136
+  Script: {instanceID: 0}
+Assets:
+- Assets/Materials/Screw-Material.mat
+- Assets/screwable_screw2.prefab
+- Assets/screwable_sound.wav
+- Assets/screwable_nut.prefab
+- Assets/screwable_screw1.prefab
+- Assets/screwable_screw3.prefab
+- Assets/Tube_Clamp.prefab
+Dependencies: []
