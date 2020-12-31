@@ -257,7 +257,10 @@ namespace ScrewablePartAPI.V2
                 screw.gameObject.transform.Translate(0f, 0f, -transformStep);
 
                 screw.tightness++;
-                CheckAllScrewsTight(screws);
+                if(screw.tightness == maxTightness)
+                {
+                    CheckAllScrewsTight(screws);
+                }
             }
         }
 
@@ -281,6 +284,7 @@ namespace ScrewablePartAPI.V2
                 screw.tightness--;
             }
             partFixed = false;
+            parentCollider.enabled = true;
         }
 
         /// <summary>
