@@ -1,3 +1,9 @@
+# IMPORTANT
+
+This repo is deprecated in favor of "MscModApi" with improved Part handling and other utility features.
+See https://github.com/MarvinBeym/MscModApi
+
+
 # ScrewablePartAPI for My Summer Car
 [![Donate](https://img.shields.io/badge/Donate-PayPal-green.svg)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=CSVGUC49W8EE8&source=url)
 
